@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = ["program"]
+
+[workspace.package]
+edition = "2021"
+
+[workspace.dependencies]
+xark = "0.3.1"
+spr-account-checks = { version = "0.10.0", default-features = false }
+spr-hasher = { version = "0.8.0", default-features = false }
+spr-interface = { version = "0.10.0" }
+spr-keypair = { version = "0.10.0" }
+spr-program = { version = "0.10.0" }
+spr-transaction = { version = "0.10.0" }
+
+groth16-solana = { version = "0.3.1", features = ["bsb22"] }
+
+borsh = { version = "1.5", default-features = false, features = ["derive"] }
+pinocchio = "0.11"
+thiserror = "2.0"
+wincode = { version = "0.6", features = ["derive"] }
+solana-address = { version = "2.7", features = ["atomic", "borsh", "bytemuck", "copy", "decode", "wincode"] }
+solana-program-error = "3.0"
+
+[profile.release]
+overflow-checks = true

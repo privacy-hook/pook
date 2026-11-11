@@ -1,0 +1,12 @@
+node_modules/
+dist/
+contract/dist/
+sdk/dist/
+dist-packages/
+src/generated/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+
