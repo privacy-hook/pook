@@ -1,5 +1,8 @@
 extern crate alloc;
 
+#[cfg(any(feature = "circuits", feature = "wasm"))]
+pub mod circuits;
+
 pub mod error;
 #[cfg(not(xark))]
 pub mod pda;
@@ -7,6 +10,9 @@ pub mod state;
 
 #[cfg(all(not(feature = "build-circuits"), not(feature = "wasm"), not(xark)))]
 pub mod instructions;
+#[cfg(all(not(feature = "build-circuits"), not(feature = "wasm"), not(xark)))]
+#[rustfmt::skip]
+pub mod verifier;
 
 #[cfg(all(not(feature = "build-circuits"), not(feature = "wasm"), not(xark)))]
 use pinocchio::{address::address_eq, error::ProgramError, AccountView, Address, ProgramResult};
