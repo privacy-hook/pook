@@ -5,6 +5,8 @@ pub mod error;
 pub mod pda;
 pub mod state;
 
+#[cfg(all(not(feature = "build-circuits"), not(feature = "wasm"), not(xark)))]
+pub mod instructions;
 
 #[cfg(all(not(feature = "build-circuits"), not(feature = "wasm"), not(xark)))]
 use pinocchio::{address::address_eq, error::ProgramError, AccountView, Address, ProgramResult};
@@ -43,6 +45,10 @@ pub fn process_instruction(
         .ok_or(ProgramError::InvalidInstructionData)?;
 
     match *ix_tag {
+        tag::INIT_CONFIG => instructions::config::process_init_config(accounts, ix_data),
+        tag::SET_CONFIG => instructions::config::process_set_config(accounts, ix_data),
+        tag::PUBLISH_HOOK => instructions::hook::process_publish_hook(accounts, ix_data),
+        tag::ENTER => instructions::enter::process_enter(accounts, ix_data),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
