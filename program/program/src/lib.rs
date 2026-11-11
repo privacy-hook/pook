@@ -55,6 +55,7 @@ pub fn process_instruction(
         tag::SET_CONFIG => instructions::config::process_set_config(accounts, ix_data),
         tag::PUBLISH_HOOK => instructions::hook::process_publish_hook(accounts, ix_data),
         tag::ENTER => instructions::enter::process_enter(accounts, ix_data),
+        tag::LEAVE => instructions::leave::process_leave(accounts, ix_data),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
