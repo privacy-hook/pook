@@ -41,7 +41,7 @@ ARTIFACTS_DIR="$WORKSPACE_DIR/artifacts"
 PROVING_KEYS_JSON="$WORKSPACE_DIR/wasm/web/proving-keys.json"
 mkdir -p "$ARTIFACTS_DIR"
 
-for circuit in run leave; do
+for circuit in run leave seat_open seat_fund seat_action seat_close; do
   SRC_DIR="$CARGO_TARGET_DIR/zk/pook-program/$circuit"
   DST_DIR="$ARTIFACTS_DIR/$circuit"
   mkdir -p "$DST_DIR"
@@ -54,7 +54,7 @@ python3 - "$ARTIFACTS_DIR" "$PROVING_KEYS_JSON" <<'PY'
 import hashlib, json, pathlib, sys
 artifacts = pathlib.Path(sys.argv[1])
 manifest = json.loads(pathlib.Path(sys.argv[2]).read_text())
-circuits = ["run", "leave"]
+circuits = ["run", "leave", "seat_open", "seat_fund", "seat_action", "seat_close"]
 for name in circuits:
     pk_path = artifacts / name / "pk.bin"
     actual = hashlib.sha256(pk_path.read_bytes()).hexdigest()
