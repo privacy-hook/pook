@@ -1,0 +1,162 @@
+{
+  "hook_id": "kamino.collateral.withdraw",
+  "target_program": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+  "kind": "Seat",
+  "mint_in": {
+    "type": "None"
+  },
+  "mint_out": {
+    "type": "Any"
+  },
+  "wrap_sol_in": false,
+  "unwrap_sol_out": true,
+  "data_template": [
+    235,
+    52,
+    119,
+    152,
+    149,
+    197,
+    20,
+    7,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "data_slots": [
+    {
+      "offset": 8,
+      "len": 8,
+      "kind": "CallerSlice"
+    }
+  ],
+  "account_slots": [
+    {
+      "kind": "SeatPda",
+      "is_writable": true,
+      "is_signer": true,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageOut",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "Sysvar1nstructions1111111111111111111111111"
+    },
+    {
+      "kind": "CallerRemaining",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    }
+  ],
+  "companions": [
+    {
+      "program_id": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+      "discriminator": [
+        2,
+        218,
+        138,
+        235,
+        79,
+        201,
+        25,
+        102
+      ],
+      "disc_len": 8,
+      "must_precede": true
+    },
+    {
+      "program_id": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+      "discriminator": [
+        33,
+        132,
+        147,
+        228,
+        151,
+        192,
+        72,
+        89
+      ],
+      "disc_len": 8,
+      "must_precede": true
+    }
+  ]
+}

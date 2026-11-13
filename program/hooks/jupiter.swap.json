@@ -1,0 +1,54 @@
+{
+  "hook_id": "jupiter.swap",
+  "target_program": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+  "kind": "Flow",
+  "mint_in": {
+    "type": "Any"
+  },
+  "mint_out": {
+    "type": "Any"
+  },
+  "wrap_sol_in": true,
+  "unwrap_sol_out": true,
+  "data_template": [],
+  "data_slots": [
+    {
+      "offset": 0,
+      "len": 0,
+      "kind": "CallerTail"
+    }
+  ],
+  "account_slots": [
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StagePda",
+      "is_writable": false,
+      "is_signer": true,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageIn",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageOut",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "CallerRemaining",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    }
+  ],
+  "companions": []
+}

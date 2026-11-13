@@ -1,0 +1,95 @@
+{
+  "hook_id": "jito.stake",
+  "target_program": "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
+  "kind": "Flow",
+  "mint_in": {
+    "type": "Sol"
+  },
+  "mint_out": {
+    "type": "Spl",
+    "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn"
+  },
+  "wrap_sol_in": false,
+  "unwrap_sol_out": false,
+  "data_template": [
+    14,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "data_slots": [
+    {
+      "offset": 1,
+      "len": 8,
+      "kind": "AmountInU64Le"
+    }
+  ],
+  "account_slots": [
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "6iQKfEyhr3bZMotVkW6beNZz5CPAkiwvgV2CTje9pVSS"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "BgKUXdS29YcHCFrPm5M8oLHiTzZaMDjsebggjoaQ6KFL"
+    },
+    {
+      "kind": "StagePda",
+      "is_writable": true,
+      "is_signer": true,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageOut",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "8yoigZfzZ1nNaadumY9uPVD118225UYHTDpmjpr2nrSa"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "8yoigZfzZ1nNaadumY9uPVD118225UYHTDpmjpr2nrSa"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    }
+  ],
+  "companions": []
+}
