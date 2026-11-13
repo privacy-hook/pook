@@ -563,7 +563,9 @@ pub fn process_run(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
             .min(args.amount_in)
     } else {
         let stage_in_tok = stage_in_token_acct.ok_or(PookError::InvalidStageTokenAccount)?;
-        read_token_amount(stage_in_tok)?.saturating_sub(stage_in_token_before)
+        read_token_amount(stage_in_tok)?
+            .saturating_sub(stage_in_token_before)
+            .min(args.amount_in)
     };
 
     let view_tag = *authority_pda.as_array();
