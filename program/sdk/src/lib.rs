@@ -1,4 +1,5 @@
 pub mod hooks;
+pub mod instructions;
 pub mod notes;
 pub mod proof;
 
