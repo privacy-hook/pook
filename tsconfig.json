@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "hooks/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "contract",
+    "sdk",
+    "program",
+    "src/engines/server/prisma.config.ts",
+    "src/engines/server/contract/http.ts",
+    "src/engines/server/contract/openapi.ts",
+    "src/engines/server/contract/fixtures.ts",
+    "src/engines/tx/client/**",
+    "src/engines/tx/server/testing/**",
+    "src/engines/indexer/anchor.ts",
+    "src/engines/indexer/laserstream.ts"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@pook/contract",
+  "version": "0.1.0",
+  "description": "Typed API contract, schemas, client, OpenAPI spec, and fixtures for Pook.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "openapi.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures.d.ts",
+      "import": "./dist/fixtures.js"
+    },
+    "./openapi.json": "./openapi.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node dist/write-openapi.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "zod": "^4.3.6"
+  }
+}
