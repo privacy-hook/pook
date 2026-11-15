@@ -917,5 +917,858 @@ fn pook_e2e_all_launch_hooks_and_invariants() -> Result<()> {
         sol_note34.utxo.amount
     );
 
+    // =========================================================================
+    // 5. SEAT FLOW: open_seat (Kamino init) -> kamino.collateral.deposit (50 USDC)
+    //    -> kamino.borrow (0.1 SOL) -> kamino.repay (0.101 SOL)
+    //    -> kamino.collateral.withdraw (all USDC) -> close_seat (rent back to opener relayer)
+    // =========================================================================
+    let (kdep_hook, kdep_pda) = load_hook(&client, "kamino.collateral.deposit")?;
+    let (kbor_hook, kbor_pda) = load_hook(&client, "kamino.borrow")?;
+    let (krep_hook, krep_pda) = load_hook(&client, "kamino.repay")?;
+    let (kwdr_hook, kwdr_pda) = load_hook(&client, "kamino.collateral.withdraw")?;
+
+    let coll_usdc_in = 50_000_000u64; // 50 USDC (~$50 collateral)
+    let borrow_sol_amt = 100_000_000u64; // 0.1 SOL (~$7 borrowed, well within LTV)
+    let repay_sol_in = 101_000_000u64; // 0.101 SOL (covers principal + any slot interest; dust refunded)
+    let enter_repay_sol = 150_000_000u64; // 0.15 SOL
+
+    let e5a = enter_public_spl_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        usdc_addr,
+        holder_usdc_ata,
+        spl_token_address(),
+        holder_keys.one_time_owner_hash(40)?,
+        coll_usdc_in,
+    )?;
+    let e5b = enter_public_sol_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        holder_keys.one_time_owner_hash(41)?,
+        enter_repay_sol,
+    )?;
+    let e5_sig = send_ixs(&client, &[e5a, e5b], &[&holder], 600_000)?;
+    client.confirm_private_transaction_sync(e5_sig).map_err(|e| anyhow!("{e:?}"))?;
+    let usdc_note40 = holder_keys
+        .find_note_at(40, usdc_addr, coll_usdc_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("USDC note #40 missing"))?;
+    let sol_note41 = holder_keys
+        .find_note_at(41, SOL_MINT, enter_repay_sol, &assets, &client)?
+        .ok_or_else(|| anyhow!("SOL note #41 missing"))?;
+
+    // Open seat #0 + initialize Kamino user_metadata & obligation + obligation collateral farm + seat USDC ATA.
+    let seat_commitment_0 = holder_keys.seat_commitment(0)?;
+    let (seat_pda_0, _) = find_seat_pda(&seat_commitment_0);
+    let (seat_state_0, _) = find_seat_state_pda(&seat_commitment_0);
+    let (setup_cpis, setup_accts, user_meta_addr, obligation_addr) =
+        kamino_open_seat_setup(seat_pda_0, KAMINO_MAIN_MARKET_ID);
+    let usdc_farm_state = to_addr(pk_str(KAMINO_USDC_FARM_COLLATERAL));
+    let obligation_farm_usdc = derive_kamino_obligation_farm_pda(usdc_farm_state, obligation_addr);
+
+    let (open_ix, derived_comm, derived_seat_pda) = build_and_prove_open_seat(
+        &holder_keys,
+        0,
+        50,
+        to_addr(relayer.pubkey()),
+        EXPIRY,
+        tree_addr,
+        TREE_ID,
+        setup_cpis,
+        setup_accts,
+        indexer,
+    )?;
+    ensure!(derived_comm == seat_commitment_0 && derived_seat_pda == seat_pda_0);
+
+    let init_farm_ix = kamino_init_obligation_farms_for_reserve_ix(
+        to_addr(relayer.pubkey()),
+        seat_pda_0,
+        obligation_addr,
+        KAMINO_MAIN_MARKET_AUTHORITY_ID,
+        KAMINO_USDC_RESERVE_ID,
+        usdc_farm_state,
+        obligation_farm_usdc,
+        KAMINO_MAIN_MARKET_ID,
+        0, // Collateral mode
+    );
+    let create_seat_usdc_ata = create_ata_idempotent_ix(relayer.pubkey(), to_pk(seat_pda_0), usdc_mint);
+    let open_sig = send_ixs(
+        &client,
+        &[open_ix, init_farm_ix, create_seat_usdc_ata],
+        &[&relayer],
+        1_000_000,
+    )?;
+    client.confirm_private_transaction_sync(open_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("open_seat (Kamino init)", &open_sig, &holder_pk_str)?;
+
+    ensure!(client.rpc().get_account(to_pk(user_meta_addr))?.is_some(), "Kamino user_metadata missing");
+    ensure!(client.rpc().get_account(to_pk(obligation_addr))?.is_some(), "Kamino obligation missing");
+    let seat_state: Seat = borsh::from_slice(&client.rpc().get_account(to_pk(seat_state_0))?.unwrap().data[..Seat::LEN])?;
+    ensure!(seat_state.opener_relayer == relayer.pubkey().to_bytes());
+
+    let seat_utxo_50 = holder_keys
+        .scan_seat_notes(50, &assets, &client)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("SeatNote #50 missing"))?
+        .utxo;
+
+    // 5a. `kamino.collateral.deposit` (50 USDC into Kamino obligation)
+    let kdep_caller = vec![
+        AccountMeta::new(to_pk(obligation_addr), false),                          // 1: obligation
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_ID), false),           // 2: lending_market
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_AUTHORITY_ID), false), // 3: lma
+        AccountMeta::new(to_pk(KAMINO_USDC_RESERVE_ID), false),                   // 4: reserve
+        AccountMeta::new_readonly(usdc_mint, false),                              // 5: reserve_liquidity_mint
+        AccountMeta::new(pk_str(KAMINO_USDC_LIQ_SUPPLY), false),                  // 6: reserve_liquidity_supply
+        AccountMeta::new(kusdc_mint, false),                                      // 7: reserve_collateral_mint
+        AccountMeta::new(pk_str(KAMINO_USDC_COLL_VAULT), false),                  // 8: reserve_destination_deposit_collateral
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),                  // 10: placeholder (Fixed)
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 11: coll_tp (Fixed)
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 12: liq_tp
+        AccountMeta::new_readonly(Pubkey::new_from_array(INSTRUCTIONS_SYSVAR_ID), false), // 13: ix_sysvar (Fixed)
+        // CallerRemaining (14..): [obligation_farm, reserve_farm, farms_program]
+        AccountMeta::new(to_pk(obligation_farm_usdc), false),
+        AccountMeta::new(to_pk(usdc_farm_state), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_FARMS_ID), false),
+    ];
+    let kdep_ix = build_and_prove_seat_fund(
+        BuildSeatFundParams {
+            holder: &holder_keys,
+            seat_index: 0,
+            seat_utxo: seat_utxo_50,
+            seat_note_key_index: 50,
+            next_seat_note_key_index: 51,
+            input_0: usdc_note40,
+            input_0_index: 40,
+            input_1: None,
+            change_index: 45,
+            output_index: 46,
+            hook: &kdep_hook,
+            hook_pda: kdep_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 0,
+            relayer_fee_ata: None,
+            amount_in: coll_usdc_in,
+            min_out: 0,
+            mint_in: usdc_addr,
+            mint_out: Address::default(),
+            has_mint_out: false,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: Vec::new(),
+            caller_accounts: kdep_caller,
+            caller_remaining_writable: vec![1, 1, 0],
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let refresh_ob_empty = kamino_refresh_obligation_ix(KAMINO_MAIN_MARKET_ID, obligation_addr, &[]);
+    let kdep_sig = send_ixs(
+        &client,
+        &[refresh_usdc_ix.clone(), refresh_ob_empty, kdep_ix],
+        &[&relayer],
+        1_000_000,
+    )?;
+    client.confirm_private_transaction_sync(kdep_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.collateral.deposit", &kdep_sig, &holder_pk_str)?;
+
+    let seat_utxo_51 = holder_keys
+        .scan_seat_notes(51, &assets, &client)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("renewed SeatNote #51 missing"))?
+        .utxo;
+
+    // 5b. `kamino.borrow` (0.1 SOL against USDC collateral)
+    let refresh_sol_ix = kamino_refresh_reserve_ix(
+        KAMINO_SOL_RESERVE_ID,
+        KAMINO_MAIN_MARKET_ID,
+        SCOPE_ORACLE_PRICES_ID,
+    );
+    let refresh_ob_usdc = kamino_refresh_obligation_ix(
+        KAMINO_MAIN_MARKET_ID,
+        obligation_addr,
+        &[KAMINO_USDC_RESERVE_ID],
+    );
+    let kbor_caller = vec![
+        AccountMeta::new(to_pk(obligation_addr), false),                          // 1: obligation
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_ID), false),           // 2: lending_market
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_AUTHORITY_ID), false), // 3: lma
+        AccountMeta::new(to_pk(KAMINO_SOL_RESERVE_ID), false),                    // 4: borrow_reserve
+        AccountMeta::new_readonly(wsol_mint, false),                              // 5: borrow_reserve_liquidity_mint
+        AccountMeta::new(pk_str(KAMINO_SOL_LIQ_SUPPLY), false),                   // 6: reserve_source_liquidity
+        AccountMeta::new(pk_str(KAMINO_SOL_FEE_VAULT), false),                    // 7: fee_receiver
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),                  // 9: referrer (Fixed None)
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 10: token_program
+        AccountMeta::new_readonly(Pubkey::new_from_array(INSTRUCTIONS_SYSVAR_ID), false), // 11: ix_sysvar (Fixed)
+        // CallerRemaining (12..): [None farm user, None farm state, farms_program, deposit_reserve(USDC)]
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_FARMS_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_USDC_RESERVE_ID), false),
+    ];
+    let kbor_ix = build_and_prove_seat_action(
+        BuildSeatActionParams {
+            holder: &holder_keys,
+            seat_index: 0,
+            seat_utxo: seat_utxo_51,
+            seat_note_key_index: 51,
+            next_seat_note_key_index: 52,
+            output_index: 42,
+            hook: &kbor_hook,
+            hook_pda: kbor_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 50_000,
+            relayer_fee_ata: None,
+            min_out: 90_000_000,
+            mint_out: SOL_MINT,
+            has_mint_out: true,
+            token_program_out: spl_token_address(),
+            caller_data: borrow_sol_amt.to_le_bytes().to_vec(),
+            caller_accounts: kbor_caller,
+            caller_remaining_writable: vec![0, 0, 0, 0],
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let create_seat_wsol_1 = create_ata_idempotent_ix(relayer.pubkey(), to_pk(seat_pda_0), wsol_mint);
+    let kbor_sig = send_ixs(
+        &client,
+        &[create_seat_wsol_1, refresh_usdc_ix.clone(), refresh_sol_ix.clone(), refresh_ob_usdc.clone(), kbor_ix],
+        &[&relayer],
+        1_200_000,
+    )?;
+    client.confirm_private_transaction_sync(kbor_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.borrow (SOL)", &kbor_sig, &holder_pk_str)?;
+
+    let borrowed_sol_note42 = holder_keys
+        .find_note_at(42, SOL_MINT, 90_000_000, &assets, &client)?
+        .ok_or_else(|| anyhow!("borrowed SOL note #42 missing"))?;
+    let seat_utxo_52 = holder_keys
+        .scan_seat_notes(52, &assets, &client)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("renewed SeatNote #52 missing"))?
+        .utxo;
+
+    // 5c. `kamino.repay` (repay full SOL borrow from SOL note #41)
+    let refresh_ob_usdc_sol = kamino_refresh_obligation_ix(
+        KAMINO_MAIN_MARKET_ID,
+        obligation_addr,
+        &[KAMINO_USDC_RESERVE_ID, KAMINO_SOL_RESERVE_ID],
+    );
+    let krep_caller = vec![
+        AccountMeta::new(to_pk(obligation_addr), false),                          // 1: obligation
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_ID), false),           // 2: lending_market
+        AccountMeta::new(to_pk(KAMINO_SOL_RESERVE_ID), false),                    // 3: repay_reserve
+        AccountMeta::new_readonly(wsol_mint, false),                              // 4: reserve_liquidity_mint
+        AccountMeta::new(pk_str(KAMINO_SOL_LIQ_SUPPLY), false),                   // 5: reserve_destination_liquidity
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 7: token_program
+        AccountMeta::new_readonly(Pubkey::new_from_array(INSTRUCTIONS_SYSVAR_ID), false), // 8: ix_sysvar (Fixed)
+        // CallerRemaining (9..): [None farm user, None farm state, lma, farms_program, deposit_reserve(USDC)]
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_AUTHORITY_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_FARMS_ID), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_USDC_RESERVE_ID), false),
+    ];
+    let krep_ix = build_and_prove_seat_fund(
+        BuildSeatFundParams {
+            holder: &holder_keys,
+            seat_index: 0,
+            seat_utxo: seat_utxo_52,
+            seat_note_key_index: 52,
+            next_seat_note_key_index: 53,
+            input_0: sol_note41,
+            input_0_index: 41,
+            input_1: None,
+            change_index: 47,
+            output_index: 48,
+            hook: &krep_hook,
+            hook_pda: krep_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 0,
+            relayer_fee_ata: None,
+            amount_in: repay_sol_in,
+            min_out: 0,
+            mint_in: SOL_MINT,
+            mint_out: Address::default(),
+            has_mint_out: false,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: Vec::new(),
+            caller_accounts: krep_caller,
+            caller_remaining_writable: vec![0, 0, 0, 0, 0],
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let create_seat_wsol_2 = create_ata_idempotent_ix(relayer.pubkey(), to_pk(seat_pda_0), wsol_mint);
+    let krep_sig = send_ixs(
+        &client,
+        &[create_seat_wsol_2, refresh_usdc_ix.clone(), refresh_sol_ix.clone(), refresh_ob_usdc_sol, krep_ix],
+        &[&relayer],
+        1_200_000,
+    )?;
+    client.confirm_private_transaction_sync(krep_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.repay (SOL)", &krep_sig, &holder_pk_str)?;
+
+    let seat_utxo_53 = holder_keys
+        .scan_seat_notes(53, &assets, &client)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("renewed SeatNote #53 missing"))?
+        .utxo;
+
+    // 5d. `kamino.collateral.withdraw` (u64::MAX -> withdraws all USDC collateral & closes Kamino obligation!)
+    let kwdr_caller = vec![
+        AccountMeta::new(to_pk(obligation_addr), false),                          // 1: obligation
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_ID), false),           // 2: lending_market
+        AccountMeta::new_readonly(to_pk(KAMINO_MAIN_MARKET_AUTHORITY_ID), false), // 3: lma
+        AccountMeta::new(to_pk(KAMINO_USDC_RESERVE_ID), false),                   // 4: withdraw_reserve
+        AccountMeta::new_readonly(usdc_mint, false),                              // 5: reserve_liquidity_mint
+        AccountMeta::new(pk_str(KAMINO_USDC_COLL_VAULT), false),                  // 6: reserve_source_collateral
+        AccountMeta::new(kusdc_mint, false),                                      // 7: reserve_collateral_mint
+        AccountMeta::new(pk_str(KAMINO_USDC_LIQ_SUPPLY), false),                  // 8: reserve_liquidity_supply
+        AccountMeta::new_readonly(to_pk(KAMINO_LEND_ID), false),                  // 10: placeholder (Fixed)
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 11: coll_tp (Fixed)
+        AccountMeta::new_readonly(Pubkey::new_from_array(SPL_TOKEN_PROGRAM_ID), false), // 12: liq_tp
+        AccountMeta::new_readonly(Pubkey::new_from_array(INSTRUCTIONS_SYSVAR_ID), false), // 13: ix_sysvar (Fixed)
+        // CallerRemaining (14..): [obligation_farm, reserve_farm, farms_program]
+        AccountMeta::new(to_pk(obligation_farm_usdc), false),
+        AccountMeta::new(to_pk(usdc_farm_state), false),
+        AccountMeta::new_readonly(to_pk(KAMINO_FARMS_ID), false),
+    ];
+    let kwdr_ix = build_and_prove_seat_action(
+        BuildSeatActionParams {
+            holder: &holder_keys,
+            seat_index: 0,
+            seat_utxo: seat_utxo_53,
+            seat_note_key_index: 53,
+            next_seat_note_key_index: 54,
+            output_index: 44,
+            hook: &kwdr_hook,
+            hook_pda: kwdr_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 1_000,
+            relayer_fee_ata: None,
+            min_out: 49_000_000,
+            mint_out: usdc_addr,
+            has_mint_out: true,
+            token_program_out: spl_token_address(),
+            caller_data: u64::MAX.to_le_bytes().to_vec(),
+            caller_accounts: kwdr_caller,
+            caller_remaining_writable: vec![1, 1, 0],
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let kwdr_sig = send_ixs(
+        &client,
+        &[refresh_usdc_ix.clone(), refresh_ob_usdc, kwdr_ix],
+        &[&relayer],
+        1_200_000,
+    )?;
+    client.confirm_private_transaction_sync(kwdr_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.collateral.withdraw", &kwdr_sig, &holder_pk_str)?;
+
+    let withdrawn_usdc_note44 = holder_keys
+        .find_note_at(44, usdc_addr, 49_000_000, &assets, &client)?
+        .ok_or_else(|| anyhow!("withdrawn USDC note #44 missing"))?;
+    ensure!(
+        client.rpc().get_account(to_pk(obligation_addr))?.is_none(),
+        "Kamino obligation should be closed after full collateral withdraw"
+    );
+    let seat_pda_rent = client.rpc().get_balance(to_pk(seat_pda_0))?;
+    ensure!(seat_pda_rent > 0, "obligation rent should have been refunded to seat_pda");
+
+    let seat_utxo_54 = holder_keys
+        .scan_seat_notes(54, &assets, &client)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("renewed SeatNote #54 missing"))?
+        .utxo;
+
+    // 5e. `close_seat`: burns SeatNote #54, closes seat_state, returns BOTH seat_state + obligation rent to opener_relayer!
+    let relayer_before_close = client.rpc().get_balance(relayer.pubkey())?;
+    let close_ix = build_and_prove_close_seat(
+        &holder_keys,
+        0,
+        seat_utxo_54,
+        54,
+        to_addr(relayer.pubkey()),
+        to_addr(relayer.pubkey()),
+        EXPIRY,
+        tree_addr,
+        TREE_ID,
+        indexer,
+    )?;
+    let close_sig = send_ixs(&client, &[close_ix], &[&relayer], 600_000)?;
+    client.confirm_private_transaction_sync(close_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("close_seat", &close_sig, &holder_pk_str)?;
+
+    ensure!(client.rpc().get_account(to_pk(seat_state_0))?.is_none(), "seat_state not closed");
+    ensure!(client.rpc().get_balance(to_pk(seat_pda_0))? == 0, "seat_pda lamports not returned");
+    let relayer_after_close = client.rpc().get_balance(relayer.pubkey())?;
+    ensure!(
+        relayer_after_close > relayer_before_close,
+        "opener relayer did not receive closed seat + obligation rent"
+    );
+    println!(
+        "5. SEAT FLOW passed: deposit(50 USDC) -> borrow({} lamports) -> repay -> withdraw({} USDC) -> close_seat (+{} lamports rent returned to opener relayer)",
+        borrowed_sol_note42.utxo.amount,
+        withdrawn_usdc_note44.utxo.amount,
+        relayer_after_close - relayer_before_close
+    );
+
+    // =========================================================================
+    // 6. INVARIANTS: SlippageExceeded (7519) & ForbiddenHookAccount (7517)
+    // =========================================================================
+    let enter_inv_ix = enter_public_spl_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        usdc_addr,
+        holder_usdc_ata,
+        spl_token_address(),
+        holder_keys.one_time_owner_hash(60)?,
+        swap1_in,
+    )?;
+    let enter_inv_sig = send_ixs(&client, &[enter_inv_ix], &[&holder], 400_000)?;
+    client.confirm_private_transaction_sync(enter_inv_sig).map_err(|e| anyhow!("{e:?}"))?;
+    let inv_note = holder_keys
+        .find_note_at(60, usdc_addr, swap1_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("invariant USDC note #60 missing"))?;
+
+    let bad_min_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: inv_note,
+            input_0_index: 60,
+            input_1: None,
+            change_index: 61,
+            output_index: 62,
+            hook: &jup_hook,
+            hook_pda: jup_hook_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: swap1_relayer_fee,
+            relayer_fee_ata: None,
+            amount_in: swap1_in,
+            min_out: 500_000_000, // 0.5 SOL > ~0.14 SOL
+            mint_in: usdc_addr,
+            mint_out: SOL_MINT,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: swap1_data.clone(),
+            caller_accounts: swap1_caller_accts.clone(),
+            caller_remaining_writable: swap1_rem_w.clone(),
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let err1 = send_ixs(
+        &client,
+        &[create_ata_idempotent_ix(relayer.pubkey(), to_pk(stage_pda), wsol_mint), bad_min_ix],
+        &[&relayer],
+        1_400_000,
+    )
+    .expect_err("SlippageExceeded expected");
+    let code1 = PookError::SlippageExceeded as u32;
+    let err1_s = format!("{err1:#}");
+    ensure!(err1_s.contains(&format!("{code1:#x}")) || err1_s.contains(&code1.to_string()), "got: {err1_s}");
+    let still_unspent = holder_keys
+        .find_note_at(60, usdc_addr, swap1_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("INVARIANT VIOLATION: note #60 lost on SlippageExceeded"))?;
+
+    let (authority_pda, _) = pook_program::pda::find_authority_pda();
+    let mut poisoned_accts = swap1_caller_accts.clone();
+    poisoned_accts.push(AccountMeta::new_readonly(to_pk(authority_pda), false));
+    let mut poisoned_w = swap1_rem_w.clone();
+    poisoned_w.push(0);
+    let poisoned_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: still_unspent,
+            input_0_index: 60,
+            input_1: None,
+            change_index: 63,
+            output_index: 64,
+            hook: &jup_hook,
+            hook_pda: jup_hook_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: swap1_relayer_fee,
+            relayer_fee_ata: None,
+            amount_in: swap1_in,
+            min_out: swap1_min_out,
+            mint_in: usdc_addr,
+            mint_out: SOL_MINT,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: swap1_data.clone(),
+            caller_accounts: poisoned_accts,
+            caller_remaining_writable: poisoned_w,
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let err2 = send_ixs(
+        &client,
+        &[create_ata_idempotent_ix(relayer.pubkey(), to_pk(stage_pda), wsol_mint), poisoned_ix],
+        &[&relayer],
+        1_400_000,
+    )
+    .expect_err("ForbiddenHookAccount expected");
+    let code2 = PookError::ForbiddenHookAccount as u32;
+    let err2_s = format!("{err2:#}");
+    ensure!(err2_s.contains(&format!("{code2:#x}")) || err2_s.contains(&code2.to_string()), "got: {err2_s}");
+    ensure!(holder_keys.find_note_at(60, usdc_addr, swap1_in, &assets, &client)?.is_some());
+    println!("6. INVARIANTS passed: SlippageExceeded (7519) and ForbiddenHookAccount (7517), note #60 unspent");
+
+    // =========================================================================
+    // 7. STAGE ACCOUNTING REGRESSIONS:
+    //    (a) kamino.supply with 5_000_000 USDC (Kamino rounds down to 4_999_999,
+    //        leaving 1 unit in stage_in -> returned to holder's notes in same deposit CPI),
+    //        followed by kamino.withdraw and another USDC flow (jupiter.swap USDC -> SOL).
+    //    (b) stray SPL USDC transfer into stage_pda's USDC ATA before jupiter.swap (USDC -> SOL)
+    //        and jupiter.swap (SOL -> USDC): both pass and never count stray tokens as output.
+    // =========================================================================
+
+    // 7a. Kamino round-down leftover input + subsequent kamino.withdraw + subsequent USDC flow.
+    let round_supply_in = 5_000_000u64; // 5 USDC (Kamino rounds liquidity down by 1 base unit)
+    let enter7a_ix = enter_public_spl_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        usdc_addr,
+        holder_usdc_ata,
+        spl_token_address(),
+        holder_keys.one_time_owner_hash(70)?,
+        round_supply_in,
+    )?;
+    let enter7a_sig = send_ixs(&client, &[enter7a_ix], &[&holder], 400_000)?;
+    client.confirm_private_transaction_sync(enter7a_sig).map_err(|e| anyhow!("{e:?}"))?;
+    let usdc_note70 = holder_keys
+        .find_note_at(70, usdc_addr, round_supply_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("USDC note #70 missing"))?;
+
+    let stage_usdc_before_7a = get_token_balance(&client, to_pk(stage_usdc_ata))?;
+    let ksupply7a_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: usdc_note70,
+            input_0_index: 70,
+            input_1: None,
+            change_index: 71,
+            output_index: 72,
+            hook: &ksupply_hook,
+            hook_pda: ksupply_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 1_000,
+            relayer_fee_ata: None,
+            amount_in: round_supply_in,
+            min_out: 1,
+            mint_in: usdc_addr,
+            mint_out: KAMINO_KUSDC_MINT_ID,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: Vec::new(),
+            caller_accounts: ksupply_caller,
+            caller_remaining_writable: Vec::new(),
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let ksupply7a_sig = send_ixs(&client, &[refresh_usdc_ix.clone(), ksupply7a_ix], &[&relayer], 950_000)?;
+    client.confirm_private_transaction_sync(ksupply7a_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.supply (5 USDC round-down)", &ksupply7a_sig, &holder_pk_str)?;
+
+    ensure!(
+        get_token_balance(&client, to_pk(stage_usdc_ata))? == stage_usdc_before_7a,
+        "leftover USDC stranded in stage_usdc_ata after kamino.supply"
+    );
+    ensure!(get_token_balance(&client, to_pk(stage_kusdc_ata))? == 0);
+    let kusdc_note72 = holder_keys
+        .find_note_at(72, KAMINO_KUSDC_MINT_ID, 1, &assets, &client)?
+        .ok_or_else(|| anyhow!("output kUSDC note #72 missing after 5 USDC kamino.supply"))?;
+    // Kamino rounds a deposit down by one unit or not, depending on the reserve's exchange rate at the
+    // time; when it does, the unused unit comes back to the holder as a USDC note at the output index.
+    let leftover_usdc_note72 = holder_keys.find_note_at(72, usdc_addr, 1, &assets, &client)?;
+    match &leftover_usdc_note72 {
+        Some(n) => {
+            ensure!(n.utxo.amount >= 1 && n.utxo.amount < 10, "unexpected leftover USDC amount: {}", n.utxo.amount);
+            println!("  kamino.supply rounded down; leftover {} USDC returned as note #72", n.utxo.amount);
+        }
+        None => println!("  kamino.supply took the full amount; no leftover note"),
+    }
+
+    // Immediately run kamino.withdraw (kUSDC -> USDC) and verify it passes.
+    let kusdc72_amt = kusdc_note72.utxo.amount;
+    let kwithdraw7a_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: kusdc_note72,
+            input_0_index: 72,
+            input_1: None,
+            change_index: 73,
+            output_index: 74,
+            hook: &kwithdraw_hook,
+            hook_pda: kwithdraw_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: 1_000,
+            relayer_fee_ata: None,
+            amount_in: kusdc72_amt,
+            min_out: 4_500_000,
+            mint_in: KAMINO_KUSDC_MINT_ID,
+            mint_out: usdc_addr,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: Vec::new(),
+            caller_accounts: kwithdraw_caller,
+            caller_remaining_writable: Vec::new(),
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let kwithdraw7a_sig = send_ixs(&client, &[refresh_usdc_ix, kwithdraw7a_ix], &[&relayer], 950_000)?;
+    client.confirm_private_transaction_sync(kwithdraw7a_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("kamino.withdraw (post-round-down)", &kwithdraw7a_sig, &holder_pk_str)?;
+    let usdc_note74 = holder_keys
+        .find_note_at(74, usdc_addr, 4_500_000, &assets, &client)?
+        .ok_or_else(|| anyhow!("output USDC note #74 missing after post-round-down kamino.withdraw"))?;
+    ensure!(get_token_balance(&client, to_pk(stage_usdc_ata))? == stage_usdc_before_7a);
+
+    // Run another USDC flow (jupiter.swap USDC -> SOL) spending note #60 (still unspent from section 6).
+    let usdc_note60_followup = holder_keys
+        .find_note_at(60, usdc_addr, swap1_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("USDC note #60 missing for follow-up flow"))?;
+    let followup_swap_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: usdc_note60_followup,
+            input_0_index: 60,
+            input_1: None,
+            change_index: 75,
+            output_index: 76,
+            hook: &jup_hook,
+            hook_pda: jup_hook_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: swap1_relayer_fee,
+            relayer_fee_ata: None,
+            amount_in: swap1_in,
+            min_out: swap1_min_out,
+            mint_in: usdc_addr,
+            mint_out: SOL_MINT,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: swap1_data.clone(),
+            caller_accounts: swap1_caller_accts.clone(),
+            caller_remaining_writable: swap1_rem_w.clone(),
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let followup_swap_sig = send_ixs(
+        &client,
+        &[create_ata_idempotent_ix(relayer.pubkey(), to_pk(stage_pda), wsol_mint), followup_swap_ix],
+        &[&relayer],
+        1_400_000,
+    )?;
+    client.confirm_private_transaction_sync(followup_swap_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("jupiter.swap (post-round-down)", &followup_swap_sig, &holder_pk_str)?;
+    ensure!(holder_keys.find_note_at(76, SOL_MINT, 1, &assets, &client)?.is_some());
+    ensure!(get_token_balance(&client, to_pk(stage_usdc_ata))? == stage_usdc_before_7a);
+    println!(
+        "7a. ROUND-DOWN passed: kamino.supply(5 USDC) returned {} leftover USDC unit(s) to note #72; kamino.withdraw ({} USDC) and follow-up jupiter.swap passed",
+        leftover_usdc_note72.as_ref().map_or(0, |n| n.utxo.amount), usdc_note74.utxo.amount
+    );
+
+    // 7b. Stray SPL USDC transfer into stage_pda's USDC ATA before jupiter.swap (USDC -> SOL)
+    //     and jupiter.swap (SOL -> USDC): neither fails StageNotEmpty nor counts stray tokens as output.
+    let stray_usdc = 1_234_567u64; // 1.234567 USDC sent directly to stage_usdc_ata
+    let stage_usdc_before_stray = get_token_balance(&client, to_pk(stage_usdc_ata))?;
+    let stray_ix = spl_transfer_checked_ix(
+        to_pk(holder_usdc_ata),
+        usdc_mint,
+        to_pk(stage_usdc_ata),
+        holder.pubkey(),
+        stray_usdc,
+        6,
+    );
+    let enter7b_usdc_ix = enter_public_spl_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        usdc_addr,
+        holder_usdc_ata,
+        spl_token_address(),
+        holder_keys.one_time_owner_hash(80)?,
+        swap1_in,
+    )?;
+    let enter7b_sol_ix = enter_public_sol_ix(
+        to_addr(holder.pubkey()),
+        tree_addr,
+        holder_keys.one_time_owner_hash(84)?,
+        swap2_in,
+    )?;
+    let setup7b_sig = send_ixs(&client, &[stray_ix, enter7b_usdc_ix, enter7b_sol_ix], &[&holder], 800_000)?;
+    client.confirm_private_transaction_sync(setup7b_sig).map_err(|e| anyhow!("{e:?}"))?;
+
+    let expected_stray_bal = stage_usdc_before_stray + stray_usdc;
+    ensure!(
+        get_token_balance(&client, to_pk(stage_usdc_ata))? == expected_stray_bal,
+        "stray USDC transfer did not land in stage_usdc_ata"
+    );
+
+    let usdc_note80 = holder_keys
+        .find_note_at(80, usdc_addr, swap1_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("USDC note #80 missing"))?;
+    let sol_note84 = holder_keys
+        .find_note_at(84, SOL_MINT, swap2_in, &assets, &client)?
+        .ok_or_else(|| anyhow!("SOL note #84 missing"))?;
+
+    let stray_swap_in_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: usdc_note80,
+            input_0_index: 80,
+            input_1: None,
+            change_index: 81,
+            output_index: 82,
+            hook: &jup_hook,
+            hook_pda: jup_hook_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: swap1_relayer_fee,
+            relayer_fee_ata: None,
+            amount_in: swap1_in,
+            min_out: swap1_min_out,
+            mint_in: usdc_addr,
+            mint_out: SOL_MINT,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: swap1_data,
+            caller_accounts: swap1_caller_accts,
+            caller_remaining_writable: swap1_rem_w,
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let stray_swap_in_sig = send_ixs(
+        &client,
+        &[create_ata_idempotent_ix(relayer.pubkey(), to_pk(stage_pda), wsol_mint), stray_swap_in_ix],
+        &[&relayer],
+        1_400_000,
+    )?;
+    client.confirm_private_transaction_sync(stray_swap_in_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("jupiter.swap (stray stage_in)", &stray_swap_in_sig, &holder_pk_str)?;
+
+    ensure!(
+        get_token_balance(&client, to_pk(stage_usdc_ata))? == expected_stray_bal,
+        "stray USDC in stage_in was modified or swept"
+    );
+    ensure!(
+        holder_keys.find_note_at(82, usdc_addr, 1, &assets, &client)?.is_none(),
+        "stray USDC must not be returned as leftover input"
+    );
+    let sol_note82 = holder_keys
+        .find_note_at(82, SOL_MINT, 1, &assets, &client)?
+        .ok_or_else(|| anyhow!("output SOL note #82 missing after stray-stage jupiter.swap"))?;
+    ensure!(
+        sol_note82.utxo.amount <= delta_out_1,
+        "SOL output {} exceeded clean swap delta_out {}",
+        sol_note82.utxo.amount,
+        delta_out_1
+    );
+
+    // Also run jupiter.swap (SOL -> USDC) while stray USDC sits in stage_out (stage_usdc_ata).
+    let stray_swap_out_ix = build_and_prove_flow_run(
+        BuildFlowRunParams {
+            holder: &holder_keys,
+            input_0: sol_note84,
+            input_0_index: 84,
+            input_1: None,
+            change_index: 85,
+            output_index: 86,
+            hook: &jup_hook,
+            hook_pda: jup_hook_pda,
+            config_fee_recipient: to_addr(launch_wallet),
+            relayer_payer: to_addr(relayer.pubkey()),
+            relayer_fee: swap2_relayer_fee,
+            relayer_fee_ata: None,
+            amount_in: swap2_in,
+            min_out: swap2_min_out,
+            mint_in: SOL_MINT,
+            mint_out: usdc_addr,
+            has_mint_out: true,
+            token_program_in: spl_token_address(),
+            token_program_out: spl_token_address(),
+            caller_data: swap2_data,
+            caller_accounts: swap2_caller_accts,
+            caller_remaining_writable: swap2_rem_w,
+            expiry: EXPIRY,
+            tree: tree_addr,
+            tree_id: TREE_ID,
+        },
+        indexer,
+    )?;
+    let stray_swap_out_sig = send_ixs(
+        &client,
+        &[create_ata_idempotent_ix(relayer.pubkey(), to_pk(stage_pda), wsol_mint), stray_swap_out_ix],
+        &[&relayer],
+        1_400_000,
+    )?;
+    client.confirm_private_transaction_sync(stray_swap_out_sig).map_err(|e| anyhow!("{e:?}"))?;
+    assert_privacy_and_report("jupiter.swap (stray stage_out)", &stray_swap_out_sig, &holder_pk_str)?;
+
+    ensure!(
+        get_token_balance(&client, to_pk(stage_usdc_ata))? == expected_stray_bal,
+        "stray USDC in stage_out was drained or counted as output"
+    );
+    let usdc_note86 = holder_keys
+        .find_note_at(86, usdc_addr, 1, &assets, &client)?
+        .ok_or_else(|| anyhow!("output USDC note #86 missing after stray-stage_out jupiter.swap"))?;
+    ensure!(
+        usdc_note86.utxo.amount < usdc_note12_amt + stray_usdc / 2,
+        "USDC output {} appears to have counted stray_usdc {}",
+        usdc_note86.utxo.amount,
+        stray_usdc
+    );
+    println!(
+        "7b. STRAY STAGE passed: {stray_usdc} stray USDC in stage_usdc_ata left untouched across USDC->SOL ({} lamports) and SOL->USDC ({} USDC)",
+        sol_note82.utxo.amount, usdc_note86.utxo.amount
+    );
+
     Ok(())
 }
