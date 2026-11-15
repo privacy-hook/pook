@@ -10,3 +10,10 @@ src/generated/
 *.log
 *.tsbuildinfo
 
+# localnet: written by capture.mjs and start.sh
+localnet/accounts/
+localnet/programs/
+localnet/routes/
+localnet/keys/
+localnet/manifest.json
+localnet/mint-authority.json

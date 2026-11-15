@@ -1,0 +1,27 @@
+[package]
+name = "pook-test"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+pook-program = { path = "../program", features = ["circuits", "insecure-test-setup"] }
+pook-sdk = { path = "../sdk" }
+anyhow = { workspace = true }
+base64 = "0.22"
+borsh = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+solana-account = { workspace = true }
+solana-address = { workspace = true }
+solana-instruction = { workspace = true }
+solana-keypair = { workspace = true }
+solana-pubkey = { workspace = true }
+solana-rpc-client = "=4.3.2"
+solana-signature = { workspace = true }
+solana-signer = { workspace = true }
+spr-client = { workspace = true, features = ["solana-rpc"] }
+spr-interface = { workspace = true }
+spr-keypair = { workspace = true }
+spr-program = { workspace = true, features = ["client", "shielded-pda"] }
+spr-transaction = { workspace = true }
