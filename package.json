@@ -13,18 +13,32 @@
   "scripts": {
     "build:contract": "npm run build --workspace=@pook/contract",
     "build:sdk": "npm run build --workspace=@pook/sdk",
-    "build": "npm run build:contract && npm run build:sdk",
-    "typecheck": "tsc -p contract/tsconfig.json --noEmit && tsc -p sdk/tsconfig.json --noEmit"
+    "build:backend": "prisma generate && tsc -p tsconfig.json",
+    "build": "npm run build:contract && npm run build:sdk && npm run build:backend",
+    "typecheck": "tsc -p contract/tsconfig.json --noEmit && tsc -p sdk/tsconfig.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "dev:api": "tsx watch src/roles/api.ts",
+    "start": "node start-service.mjs api",
+    "start:api": "node start-service.mjs api"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.0",
     "@noble/hashes": "^2.2.0",
-    "@pook/contract": "0.1.2",
-    "@pook/sdk": "0.1.2",
+    "@pook/contract": "0.1.4",
+    "@pook/sdk": "0.1.4",
+    "@prisma/adapter-pg": "^7.5.0",
+    "@prisma/client": "^7.5.0",
     "@solana/kit": "^8.6.0",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.4",
+    "hono": "^4.12.0",
+    "pg": "^8.16.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "prisma": "^7.5.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.8.3"
   }
 }
