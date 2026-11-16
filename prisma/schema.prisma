@@ -85,6 +85,7 @@ model ProtocolConfig {
 model Hook {
   id                    String    @id @db.VarChar(64)
   address               String    @unique @db.VarChar(44)
+  hookIdHash            String    @default("") @map("hook_id_hash") @db.VarChar(64)
   protocol              String    @db.VarChar(32)
   protocolName          String    @map("protocol_name") @db.VarChar(64)
   label                 String    @db.VarChar(64)
@@ -93,6 +94,14 @@ model Hook {
   targetProgram         String    @map("target_program") @db.VarChar(44)
   instructionName       String    @map("instruction_name") @db.VarChar(64)
   discriminator         String    @db.VarChar(32)
+  mintInConstraint      Json      @default("{\"kind\":\"Any\"}") @map("mint_in_constraint")
+  mintOutConstraint     Json      @default("{\"kind\":\"Any\"}") @map("mint_out_constraint")
+  wrapSolIn             Boolean   @default(false) @map("wrap_sol_in")
+  unwrapSolOut          Boolean   @default(false) @map("unwrap_sol_out")
+  dataTemplateHex       String    @default("") @map("data_template_hex")
+  dataSlots             Json      @default("[]") @map("data_slots")
+  accountSlots          Json      @default("[]") @map("account_slots")
+  companions            Json      @default("[]")
   dataTemplate          Json      @map("data_template")
   accountsTemplate      Json      @map("accounts_template")
   companionInstructions Json      @default("[]") @map("companion_instructions")
@@ -154,6 +163,8 @@ model HookRun {
 
 model Seat {
   address           String    @id @db.VarChar(44)
+  commitment        String?   @unique @db.VarChar(64)
+  openerRelayer     String?   @map("opener_relayer") @db.VarChar(44)
   protocol          String    @db.VarChar(32)
   obligationAddress String?   @map("obligation_address") @db.VarChar(44)
   status            String    @db.VarChar(16)

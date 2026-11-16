@@ -1,0 +1,58 @@
+import type { LaunchHookDisplayMeta } from './jupiter.js'
+
+export const JITO_HOOK_META: Record<string, LaunchHookDisplayMeta> = {
+  'jito.stake': {
+    id: 'jito.stake',
+    protocol: 'jito',
+    protocolName: 'Jito',
+    label: 'Stake',
+    description: 'SOL in, JitoSOL out.',
+    instructionName: 'DepositSol',
+    assetInSymbol: 'SOL',
+    assetOutSymbol: 'JitoSOL',
+    formFields: [{ name: 'amountIn', kind: 'amount', label: 'SOL amount', required: true, placeholder: '10' }],
+    accountNames: {
+      0: 'stakePool',
+      1: 'stakePoolWithdrawAuthority',
+      2: 'reserveStakeAccount',
+      3: 'fundingAccount',
+      4: 'destinationPoolAccount',
+      5: 'managerFeeAccount',
+      6: 'referralPoolAccount',
+      7: 'poolMint',
+      8: 'systemProgram',
+      9: 'tokenProgram',
+    },
+    dataSlotLabels: {
+      0: { name: 'lamports', label: 'SOL amount (lamports)' },
+    },
+  },
+  'jito.unstake': {
+    id: 'jito.unstake',
+    protocol: 'jito',
+    protocolName: 'Jito',
+    label: 'Unstake',
+    description: 'JitoSOL in, SOL out.',
+    instructionName: 'WithdrawSol',
+    assetInSymbol: 'JitoSOL',
+    assetOutSymbol: 'SOL',
+    formFields: [{ name: 'amountIn', kind: 'amount', label: 'JitoSOL amount', required: true, placeholder: '5' }],
+    accountNames: {
+      0: 'stakePool',
+      1: 'stakePoolWithdrawAuthority',
+      2: 'userTransferAuthority',
+      3: 'poolTokensFrom',
+      4: 'reserveStakeAccount',
+      5: 'lamportsTo',
+      6: 'managerFeeAccount',
+      7: 'poolMint',
+      8: 'clockSysvar',
+      9: 'stakeHistorySysvar',
+      10: 'stakeProgram',
+      11: 'tokenProgram',
+    },
+    dataSlotLabels: {
+      0: { name: 'poolTokens', label: 'JitoSOL amount' },
+    },
+  },
+}
