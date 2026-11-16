@@ -1,6 +1,6 @@
 {
   "name": "@pook/contract",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Typed API contract, schemas, client, OpenAPI spec, and fixtures for Pook.",
   "type": "module",
   "sideEffects": false,

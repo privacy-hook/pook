@@ -7,16 +7,20 @@
     "node": "22.x"
   },
   "workspaces": [
-    "contract"
+    "contract",
+    "sdk"
   ],
   "scripts": {
     "build:contract": "npm run build --workspace=@pook/contract",
-    "build": "npm run build:contract",
-    "typecheck": "tsc -p contract/tsconfig.json --noEmit"
+    "build:sdk": "npm run build --workspace=@pook/sdk",
+    "build": "npm run build:contract && npm run build:sdk",
+    "typecheck": "tsc -p contract/tsconfig.json --noEmit && tsc -p sdk/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@noble/hashes": "^2.2.0",
-    "@pook/contract": "0.1.0",
+    "@pook/contract": "0.1.2",
+    "@pook/sdk": "0.1.2",
+    "@solana/kit": "^8.6.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

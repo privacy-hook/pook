@@ -1,0 +1,28 @@
+{
+  "name": "@pook/sdk",
+  "version": "0.1.2",
+  "description": "Browser-safe TypeScript SDK for Pook hooks on Solana Privacy Rings.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@pook/contract": ">=0.1.0"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "@solana/kit": "^8.6.0",
+    "zod": "^4.3.6"
+  }
+}
