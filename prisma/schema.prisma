@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Server & Worker Engine Tables ---
+
+model ServiceReadiness {
+  id          String    @id
+  ready       Boolean   @default(false)
+  nextProbeAt DateTime  @default(now()) @db.Timestamptz(3)
+  checkedAt   DateTime? @db.Timestamptz(3)
+  lastError   String?
+}
+
+model IndexedTransaction {
+  signature        String    @id @db.VarChar(88)
+  slot             BigInt
+  transactionIndex Int       @default(0) @map("transaction_index")
+  blockTime        DateTime? @map("block_time") @db.Timestamptz(6)
+  failed           Boolean
+  addresses        String[]
+  facts            Json?
+  decodeError      String?   @map("decode_error")
+  chainError       Json?     @map("chain_error")
+  appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([appliedAt, slot, transactionIndex])
+  @@map("indexed_transactions")
+}
+
+model IndexerCursor {
+  address         String   @id @db.VarChar(44)
+  latestSignature String?  @map("latest_signature") @db.VarChar(88)
+  latestSlot      BigInt?  @map("latest_slot")
+  discoveredBy    String?  @map("discovered_by") @db.VarChar(88)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("indexer_cursors")
+}
+
+model WorkerLease {
+  name      String   @id
+  owner     String
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@map("worker_leases")
+}
+
+model KeeperTransaction {
+  key                  String   @id
+  state                String
+  signature            String   @unique
+  signedBase64         String
+  blockhash            String
+  lastValidBlockHeight BigInt
+  contextSlot          BigInt
+  error                String?
+  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([state, createdAt])
+}
+
+// --- Pook Domain Tables ---
+
+model ProtocolConfig {
+  id             String   @id @default("singleton")
+  programId      String?  @map("program_id") @db.VarChar(44)
+  authorityPda   String?  @map("authority_pda") @db.VarChar(44)
+  runFeeBps      Int?     @map("run_fee_bps")
+  authorShareBps Int?     @map("author_share_bps")
+  feeRecipient   String?  @map("fee_recipient") @db.VarChar(44)
+  admin          String?  @db.VarChar(44)
+  updatedSlot    BigInt   @default(0) @map("updated_slot")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("protocol_config")
+}
+
+model Hook {
+  id                    String    @id @db.VarChar(64)
+  address               String    @unique @db.VarChar(44)
+  protocol              String    @db.VarChar(32)
+  protocolName          String    @map("protocol_name") @db.VarChar(64)
+  label                 String    @db.VarChar(64)
+  description           String
+  kind                  String    @db.VarChar(16)
+  targetProgram         String    @map("target_program") @db.VarChar(44)
+  instructionName       String    @map("instruction_name") @db.VarChar(64)
+  discriminator         String    @db.VarChar(32)
+  dataTemplate          Json      @map("data_template")
+  accountsTemplate      Json      @map("accounts_template")
+  companionInstructions Json      @default("[]") @map("companion_instructions")
+  formFields            Json      @default("[]") @map("form_fields")
+  mintIn                String?   @map("mint_in") @db.VarChar(44)
+  mintOut               String?   @map("mint_out") @db.VarChar(44)
+  assetInSymbol         String?   @map("asset_in_symbol") @db.VarChar(24)
+  assetOutSymbol        String?   @map("asset_out_symbol") @db.VarChar(24)
+  author                String    @db.VarChar(44)
+  immutable             Boolean   @default(true)
+  runsCount             Int       @default(0) @map("runs_count")
+  volumeIn              String    @default("0") @map("volume_in")
+  volumeOut             String    @default("0") @map("volume_out")
+  lastRunAt             DateTime? @map("last_run_at") @db.Timestamptz(3)
+  publishSignature      String    @map("publish_signature") @db.VarChar(88)
+  publishedSlot         BigInt    @map("published_slot")
+  publishedAt           DateTime  @map("published_at") @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  runs       HookRun[]
+  authorFees AuthorFeeLedger[]
+
+  @@index([protocol])
+  @@index([author])
+  @@map("hooks")
+}
+
+model HookRun {
+  signature         String   @id @db.VarChar(88)
+  slot              BigInt
+  hookId            String   @map("hook_id") @db.VarChar(64)
+  hookAddress       String   @map("hook_address") @db.VarChar(44)
+  protocol          String   @db.VarChar(32)
+  kind              String   @db.VarChar(16)
+  mintIn            String?  @map("mint_in") @db.VarChar(44)
+  assetInSymbol     String?  @map("asset_in_symbol") @db.VarChar(24)
+  amountIn          String   @map("amount_in")
+  mintOut           String?  @map("mint_out") @db.VarChar(44)
+  assetOutSymbol    String?  @map("asset_out_symbol") @db.VarChar(24)
+  amountOut         String   @map("amount_out")
+  runFeeAmount      String   @default("0") @map("run_fee_amount")
+  authorFeeAmount   String   @default("0") @map("author_fee_amount")
+  protocolFeeAmount String   @default("0") @map("protocol_fee_amount")
+  relayerFeeAmount  String   @default("0") @map("relayer_fee_amount")
+  stageAuthority    String   @map("stage_authority") @db.VarChar(44)
+  relayer           String   @db.VarChar(44)
+  status            String   @db.VarChar(16)
+  blockTime         DateTime @map("block_time") @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  hook Hook @relation(fields: [hookId], references: [id])
+
+  @@index([blockTime(sort: Desc)])
+  @@index([hookId, blockTime(sort: Desc)])
+  @@index([protocol, blockTime(sort: Desc)])
+  @@map("hook_runs")
+}
+
+model Seat {
+  address           String    @id @db.VarChar(44)
+  protocol          String    @db.VarChar(32)
+  obligationAddress String?   @map("obligation_address") @db.VarChar(44)
+  status            String    @db.VarChar(16)
+  openedSignature   String    @map("opened_signature") @db.VarChar(88)
+  openedSlot        BigInt    @map("opened_slot")
+  openedAt          DateTime  @map("opened_at") @db.Timestamptz(3)
+  closedSignature   String?   @map("closed_signature") @db.VarChar(88)
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([protocol, status])
+  @@map("seats")
+}
+
+model AuthorFeeLedger {
+  id                String    @id
+  author            String    @db.VarChar(44)
+  hookId            String    @map("hook_id") @db.VarChar(64)
+  hookAddress       String    @map("hook_address") @db.VarChar(44)
+  mint              String    @db.VarChar(44)
+  assetSymbol       String?   @map("asset_symbol") @db.VarChar(24)
+  decimals          Int
+  claimableAmount   String    @default("0") @map("claimable_amount")
+  totalEarnedAmount String    @default("0") @map("total_earned_amount")
+  lastClaimedAt     DateTime? @map("last_claimed_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  hook Hook @relation(fields: [hookId], references: [id])
+
+  @@unique([author, hookId, mint])
+  @@index([author])
+  @@map("author_fee_ledger")
+}
+
+model RelayJob {
+  id           String   @id
+  kind         String   @db.VarChar(16)
+  hookId       String?  @map("hook_id") @db.VarChar(64)
+  status       String   @db.VarChar(16)
+  signature    String?  @unique @db.VarChar(88)
+  slot         BigInt?
+  mintIn       String?  @map("mint_in") @db.VarChar(44)
+  mintOut      String?  @map("mint_out") @db.VarChar(44)
+  amountIn     String   @map("amount_in")
+  minimumOut   String   @map("minimum_out")
+  relayerFee   String   @map("relayer_fee")
+  expiryUnixTs BigInt   @map("expiry_unix_ts")
+  errorCode    String?  @map("error_code") @db.VarChar(48)
+  errorMessage String?  @map("error_message")
+  errorStage   String?  @map("error_stage") @db.VarChar(32)
+  programError Json?    @map("program_error")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@map("relay_jobs")
+}
+
+model WalletTransaction {
+  id                   String   @id
+  action               String   @db.VarChar(32)
+  wallet               String   @db.VarChar(44)
+  status               String   @db.VarChar(16)
+  signature            String?  @unique @db.VarChar(88)
+  transactionBase64    String   @map("transaction_base64")
+  blockhash            String   @db.VarChar(64)
+  lastValidBlockHeight BigInt   @map("last_valid_block_height")
+  errorCode            String?  @map("error_code") @db.VarChar(48)
+  errorMessage         String?  @map("error_message")
+  errorStage           String?  @map("error_stage") @db.VarChar(32)
+  programError         Json?    @map("program_error")
+  expiresAt            DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([wallet, createdAt])
+  @@map("wallet_transactions")
+}
