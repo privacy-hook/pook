@@ -5,9 +5,11 @@ import { Hono } from 'hono'
 import { CONTRACT_VERSION, type Scenario } from '@pook/contract'
 import { env, fail } from './config.js'
 import { createApi, type ApiVariables } from './engines/server/app.js'
+import { pookRpcRelay } from './chain/rpc-relay.js'
 import type { FixtureVariables } from './engines/server/fixture.js'
 import { EventHub, streamEvents, type StreamEvent } from './engines/server/sse.js'
 import { registerFixtureRoutes } from './fixture-routes.js'
+import { registerChainRoutes, type ChainAppDeps } from './chain/chain-routes.js'
 
 function loadOpenApi(): Record<string, unknown> {
   const here = path.dirname(fileURLToPath(import.meta.url))
@@ -25,7 +27,7 @@ function loadOpenApi(): Record<string, unknown> {
   return { openapi: '3.1.0', info: { title: 'Pook API', version: CONTRACT_VERSION }, paths: {} }
 }
 
-export function buildApp(mode: 'fixture' | 'chain' = env.MODE) {
+export function buildApp(mode: 'fixture' | 'chain' = env.MODE, chainDeps?: Omit<ChainAppDeps, 'hub'>) {
   const app = createApi<FixtureVariables<Scenario>>({
     origins: env.CORS_ORIGINS,
     // The Rings client's prover headers (sync/async mode, TEE envelope) ride through /v1/prover.
@@ -49,7 +51,14 @@ export function buildApp(mode: 'fixture' | 'chain' = env.MODE) {
   registerFixtureRoutes(previews, hub)
   app.route('/fixture', previews)
 
-  // Chain mode answers waiting until the program is deployed.
+  if (chainDeps) {
+    // The browser's Solana RPC goes through the API, so the provider key stays on the server.
+    app.route('/v1/rpc', pookRpcRelay(chainDeps.rpc, () => chainDeps.readiness.status() === 'ready'))
+    registerChainRoutes(app, { ...chainDeps, hub })
+    return { app, hub }
+  }
+
+  // Fallback waiting-only mode when constructed without database/RPC dependencies (e.g. smoke tests).
   app.get('/health', (c) =>
     c.json({
       status: 'waiting',

@@ -243,3 +243,23 @@ model WalletTransaction {
   @@index([wallet, createdAt])
   @@map("wallet_transactions")
 }
+
+model HookDraftMetadata {
+  hookId                String   @id @map("hook_id") @db.VarChar(64)
+  author                String   @db.VarChar(44)
+  protocol              String   @db.VarChar(32)
+  protocolName          String   @map("protocol_name") @db.VarChar(64)
+  label                 String   @db.VarChar(64)
+  description           String
+  instructionName       String   @map("instruction_name") @db.VarChar(64)
+  discriminator         String?  @db.VarChar(512)
+  dataTemplate          Json     @map("data_template")
+  accountsTemplate      Json     @map("accounts_template")
+  companionInstructions Json     @default("[]") @map("companion_instructions")
+  formFields            Json     @default("[]") @map("form_fields")
+  assetInSymbol         String?  @map("asset_in_symbol") @db.VarChar(24)
+  assetOutSymbol        String?  @map("asset_out_symbol") @db.VarChar(24)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("hook_draft_metadata")
+}
