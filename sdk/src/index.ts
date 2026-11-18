@@ -1,5 +1,7 @@
 export * from './wasm-types.js'
 export * from './define-hook.js'
+export * from './seams.js'
+export * from './client.js'
 export {
   ApiClientError,
   CONTRACT_VERSION,
