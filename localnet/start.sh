@@ -120,11 +120,11 @@ if [[ "${POOK_SKIP_SETUP:-0}" != "1" ]]; then
   export POOK_PROVER_URL="http://127.0.0.1:$PROVER_PORT"
   export POOK_LOCALNET_DIR="$SCRIPT_DIR"
   SETUP_BIN="$CARGO_TARGET_DIR/release/localnet_setup"
-  if [[ ! -x "$SETUP_BIN" ]]; then
-    echo "Building localnet_setup bootstrap binary..."
-    cargo build --manifest-path "$REPO_ROOT/program/Cargo.toml" -p pook-test --bin localnet_setup --release
-  fi
+  cargo build --manifest-path "$REPO_ROOT/program/Cargo.toml" -p pook-test --bin localnet_setup --release
   "$SETUP_BIN"
+  # Then the same idempotent init as mainnet: every hook in program/hooks/ and the SPL
+  # interfaces and token accounts their out assets need.
+  bash "$REPO_ROOT/program/scripts/init.sh" --url "$POOK_RPC_URL" --cluster localnet     --deployer "$SCRIPT_DIR/keys/admin.json" --run-fee-bps 10 --author-share-bps 3000 --skip-record
 fi
 
 echo "POOK_LOCALNET_READY (PIDs recorded in $PID_FILE)"

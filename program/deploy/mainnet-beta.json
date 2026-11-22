@@ -1,0 +1,497 @@
+{
+  "cluster": "mainnet-beta",
+  "genesisHash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "programId": "7qvNkZjiikySgCNbr8jbWbUziVka3Rw1NLwcxwmwwRwd",
+  "deploy": {
+    "deployer": "AFMxmWEUi1oDVA9SHay9BV4jg1GZHfZPZawt8H8Tk4hW",
+    "programData": "AR4N8kydXzGg7HGAjy2wUVrBdBpRhTiCxunByFzn1gMP",
+    "upgradeAuthority": "AFMxmWEUi1oDVA9SHay9BV4jg1GZHfZPZawt8H8Tk4hW",
+    "elfBytes": 267584,
+    "elfSha256": "1b353cd3655be1a018a224f6dc5868973f7e50d77a19ad1c01e3563308faf94b",
+    "dataLen": 267584,
+    "programDataLamports": 1360205560,
+    "keyKind": "production",
+    "computeUnitPriceMicroLamports": 10000,
+    "cliFigure": "Error: Account FaHyBYVCMMT3k7KFsiaKPNBbDCRVrPqRBqqYj1VzJ88W has insufficient funds for spend (1.36020556 SOL) + fee (0.005349 SOL)",
+    "netDeployerSpendLamports": 1362461272,
+    "signature": "4R1H3s1pj37QoQyES7WzrDPbUKA5i2Cv6CEXSQ3GnVw63cUHcyVqfmyHy2zArATkBvuEnRTRy87F5YwpWPMzPDSq",
+    "deployedAtUtc": "2026-11-22T20:42:05Z"
+  },
+  "pdas": {
+    "authority": "F5LdT1ZsevWdh2HQviGQtUhoBn8nn9UYScqi3pE3F2Yr",
+    "stage": "9hqmRBsxBtGkEywAuZ89McRqccDuVm68NJXcXNUQQdFf",
+    "config": "9JtAtvLC4PNsKjEEiB1tNQN95GBgLfnRxqHotjaNfgZX"
+  },
+  "init": {
+    "admin": "AFMxmWEUi1oDVA9SHay9BV4jg1GZHfZPZawt8H8Tk4hW",
+    "feeRecipient": "AFMxmWEUi1oDVA9SHay9BV4jg1GZHfZPZawt8H8Tk4hW",
+    "runFeeBps": 10,
+    "authorShareBps": 3000,
+    "sppSplInterfaceCreationPermissionless": true,
+    "splInterfaces": [
+      {
+        "symbol": "USDC",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "splInterface": "H4RD4XSWp8TLmrNYCLmV74a5ixude5s9gGqpCFjXkBLQ",
+        "assetId": 3,
+        "created": false
+      },
+      {
+        "symbol": "kUSDC",
+        "mint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+        "splInterface": "JCb7g4CarJfnQJX8xoWrm9s1Wz2pbu7saGwhFEaojmf6",
+        "assetId": 397,
+        "vaultBytes": 165,
+        "vaultLamports": 1488440,
+        "netSpendLamports": 2387520,
+        "created": true,
+        "signature": "2ahWAkqmbE1JCtGKKRggYkmDHiKXGBcgdEyeTjJaXoNCeV1ufroPAVwBfh7uApBCcEE1oqSm5MRAKXuCZU2gogVu"
+      },
+      {
+        "symbol": "kSOL",
+        "mint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+        "splInterface": "HpbgQjS2FkzKsFHsTyBPHsJwR1FGR4EjoKsE5tWAVVtF",
+        "assetId": 398,
+        "vaultBytes": 165,
+        "vaultLamports": 1488440,
+        "netSpendLamports": 2387520,
+        "created": true,
+        "signature": "jNmUHBBPGY4xPDfqBLaHF1uewbp7hGCbn4rBLcDFkLcigd1uZVU3zudHFkTeXir4Co6ALz3hzMSJoCQSRRJqZLp"
+      },
+      {
+        "symbol": "JitoSOL",
+        "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+        "splInterface": "J7YAQLGhdxGxEyuMJDVSimK5kyus1M6HabUHbPEsxVKM",
+        "assetId": 28,
+        "created": false
+      }
+    ],
+    "missingSplInterfaces": [],
+    "atas": [
+      {
+        "role": "launch_wallet",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "ata": "Av8RSeVyKJqAxy5kxtTJ9NKZxkSMkGU3HH468FFkaTAL",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3ieeRHuRPvxpcwf8EGFpuYSyXHAGBg7EstUu6tn76CBKcby7oKmxDgPnhAPqUPNwRWAzKAVmPTTwqsibAJjrv5vS"
+      },
+      {
+        "role": "stage_pda",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "ata": "EReMZrn2sncKvS4KC6PZHqLTuLUd2EcaWrvSUWAvDyKf",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "qfXpZ4bmWef6HbrfmpDH8CYxCiexUqKSoGqo81ZppwUjBWLfWv51KcpB4tXQ4XytTGcstph6zAnJDP6TRd1fZKC"
+      },
+      {
+        "role": "author_fees",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "ata": "D8XXVUmgnJbwyjDyMx9UxnvGV6Kp1uoPtPZi5q9kyWDB",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2Et7VCpivMbdhZNwfuLok8HmwyQQXsbBZu5AHeSYN2MdUxP5m3NmHjbiDdYrmX8GApwqSncwdwHPcsoCieWwSYLu"
+      },
+      {
+        "role": "launch_wallet",
+        "mint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+        "symbol": "kUSDC",
+        "ata": "FhSvAMfni1DEZfJhZjWhpFWNLoAPicPTxZb5sAJzXGkh",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "63ZbQXLuinMd3bozT7LfdueHTBGLhYSCYVguzCikBW5fCPXuS5Y9WJqTxFrqEwLcxUWhz3FBSyNkFsrsGcpQgdpn"
+      },
+      {
+        "role": "stage_pda",
+        "mint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+        "symbol": "kUSDC",
+        "ata": "6CReMss8TYkaCUSS4nwS8k3w8Y8n3qnndanHVEnT68pt",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "dGNgBnGXTeEtBKxooLoVpW4H6ebC2zyMbsrxEqWXT7QyG4zBZx21G4hax3wCkCXjZqusWCvFoN2U66rE5s4xCDw"
+      },
+      {
+        "role": "author_fees",
+        "mint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+        "symbol": "kUSDC",
+        "ata": "DPg4TjP5eTTAvbi2xzSMk9gcVwuLrjRmemc7HX8UfrGc",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2FoKwXNxz6Mfe7pVLiQzcrnfVzDPaTWs77RJvyfQ1cAuE7JnGxdTVTd7V6FWnwZRjGACDyo6NgRQs5ZNDyW9gKkJ"
+      },
+      {
+        "role": "launch_wallet",
+        "mint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+        "symbol": "kSOL",
+        "ata": "CPZjSrbpDjwYjWEJLLtYdr1TKKtT91S4NkEbKEqPN1T8",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3igkUaiKucGhNE41FtDYsMRsnbxBjwCWZ2P24M75FEs3BNBdRZRW3uNzVd7y3XcFE2QsiHL6BrLSohKF9w3CZ7DG"
+      },
+      {
+        "role": "stage_pda",
+        "mint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+        "symbol": "kSOL",
+        "ata": "DkxZRdkNtsKvYnFRJ38a5NjhKEK8sx6x4dqYTQAfDbBL",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "5qyFm1XyLL7wZL5UWAYvaMYCDxnJuLeVEZe5YdiB1yP5WrJA1gFExFpK71H66KsAkKt24PKdmH7z1Z9tKTwmPfrk"
+      },
+      {
+        "role": "author_fees",
+        "mint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+        "symbol": "kSOL",
+        "ata": "3KcNEJxGLQMVLcYRNHTMcj3Z323fkpKGmPZuvfX463zQ",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2ywr2KFfgPrt4cfxNZmCn5pqavS65LYay9BywhypKsjRD1oJUnWAtrewyGjMKma6jhEumFJJ8LrcNXfLUckXsW1k"
+      },
+      {
+        "role": "launch_wallet",
+        "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+        "symbol": "JitoSOL",
+        "ata": "C2BhABbtrFj5THG9g9VMffHZgkppXVQp482H2fskrNHq",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3g8EsZsrkxFybGiKrrgL6W3BhFQMEvgZ5ybvpgVDKbqK6ygphkCpyHaSg6nvfgyvsVRKjdbjELrZ2NtVkrnWc7zY"
+      },
+      {
+        "role": "stage_pda",
+        "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+        "symbol": "JitoSOL",
+        "ata": "GaEpo7LBEi6hoitriYD2DDhBdAc71imwPHtascotXJ6b",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "4XSNtDFzVYJybvmrttvUgEVaeLJqiPCDzRyuyKZr5NskwBybG37GqeYb7eeqgeM1UKhumyQKJ8DiUgZ3aVxRXooD"
+      },
+      {
+        "role": "author_fees",
+        "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+        "symbol": "JitoSOL",
+        "ata": "2UtgVuopbkEQWqsyAyicyKCbAJNMF1hXdZBEdfyzMQ4t",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "5EotDZUqzWJvgW46RwwnJn2fYmALfNmor6o5TNHV3dPUmUSp8wVaW6SRtFaPKGMbhCoChAdRgojq74U5389Y1jVV"
+      }
+    ],
+    "hooks": [
+      {
+        "hookId": "jito.stake",
+        "pda": "2U6t4LZsA28f2YWt98oF71fpT8pg6NXQRaNz62UWwHnh",
+        "bytes": 536,
+        "lamports": 3373120,
+        "created": true,
+        "signature": "4DLUvL71LYLbBbYVX9gEAhNRZTYG6JrrhZAT3qR51LHemvfHfBQUo33UHm7ABSjhUVkr1TRrxxuN6NLeBuGezppo"
+      },
+      {
+        "hookId": "jito.unstake",
+        "pda": "AAviWNGwWm325DVMtdns7KRYdCQHv8LSGYaD14pSixjb",
+        "bytes": 608,
+        "lamports": 3738880,
+        "created": true,
+        "signature": "LeLAktuhpFVE6MA8RRaP7xud7THjoY6BGbhYS6soi4nSknLxXZ7Z2wyaXU1doQwFXWYogUp6tmsdCwUxrARHkt9"
+      },
+      {
+        "hookId": "jupiter.swap",
+        "pda": "8HiKfGPnbznq9TitBzaDQk7LJDx7XSuAijZAjLUpLycy",
+        "bytes": 322,
+        "lamports": 2286000,
+        "created": true,
+        "signature": "5UAoqeV75RbzK4yCngfocBMQxACiQ1abRGhCBCsC34bEo9tUuj5bMjnctBZdnkmapF6LKcupo5mJsTx83xeBhVBG"
+      },
+      {
+        "hookId": "kamino.borrow",
+        "pda": "GSAZ7nQjpHKQ3c4GADa2qrgRHXnyPZriD9pwDa651YUo",
+        "bytes": 703,
+        "lamports": 4221480,
+        "created": true,
+        "signature": "3F7iZDxhTjQQWrUzReScET4K9W2JH1tfMCbvX41XyLjfBtUAHkFokx2Hu3ZNngfkX44TkyjNqDuESq8WwDwz7G4"
+      },
+      {
+        "hookId": "kamino.collateral.deposit",
+        "pda": "81UHc9nTGtkRQUrx6goTRJTT2mq6NdP3bgXztysHW4dt",
+        "bytes": 785,
+        "lamports": 4638040,
+        "created": true,
+        "signature": "3k4ZUuG3bFEbXCraA6TbTT8rgRkUfGhDQGbWF4hQ9FEcrQiMRXgwSNqMm5SiBHDNay5WJM3Ki2wZsc74nErE6zvG"
+      },
+      {
+        "hookId": "kamino.collateral.withdraw",
+        "pda": "41kReRwdfXXgBdB8U6pJVEFjxArTbvMCnGTjuQBdhLPa",
+        "bytes": 786,
+        "lamports": 4643120,
+        "created": true,
+        "signature": "duRd14GQATsySpBDeJKbT51DaetsuCCyx1bNGL5Cb5kGxdrDgLBpttDdxoJ5XrFgggBv42S54cK2VBVvBBNZGUz"
+      },
+      {
+        "hookId": "kamino.repay",
+        "pda": "366X4TkqkqJKn1FB5EMEmUbgRScfNUu2U8YceoC4UZL2",
+        "bytes": 597,
+        "lamports": 3683000,
+        "created": true,
+        "signature": "45puhv5PZHZcz9izekWTyQRpCSLbxK5RA9pZ8LiGSTY571oEBrnV6X3A6JG3bZwA3U2R2CKcxgCHa58A4Qgoa8sH"
+      },
+      {
+        "hookId": "kamino.supply",
+        "pda": "EAMGsytxDxoa9zSa5fXThWBqrpvtbyYmjthSroCZN9k6",
+        "bytes": 626,
+        "lamports": 3830320,
+        "created": true,
+        "signature": "4BdqLGGsJXYU6qa6CahL68rPNfNXK55snf2rhB6Y53MupQ5aHv1gUn5T9hU48jR7CuT2jpcomHGgkY7ySXw3JQAv"
+      },
+      {
+        "hookId": "kamino.withdraw",
+        "pda": "3zEMRjd5ZHJxWkYVR5a7AdqA6iyKwXTwB939LYjRivLT",
+        "bytes": 628,
+        "lamports": 3840480,
+        "created": true,
+        "signature": "oXtJw8KyD1miyapAG5Q785A1cdNm1pfxTAD2RZrcpd2vzwRb9rmS4Vp5nVirxX3x7Levhe3LaBpe8baZK4dnfY3"
+      }
+    ],
+    "netDeployerSpendLamports": 59047160,
+    "signatures": {
+      "ata_author_fees_JitoSOL": "5EotDZUqzWJvgW46RwwnJn2fYmALfNmor6o5TNHV3dPUmUSp8wVaW6SRtFaPKGMbhCoChAdRgojq74U5389Y1jVV",
+      "ata_author_fees_USDC": "2Et7VCpivMbdhZNwfuLok8HmwyQQXsbBZu5AHeSYN2MdUxP5m3NmHjbiDdYrmX8GApwqSncwdwHPcsoCieWwSYLu",
+      "ata_author_fees_kSOL": "2ywr2KFfgPrt4cfxNZmCn5pqavS65LYay9BywhypKsjRD1oJUnWAtrewyGjMKma6jhEumFJJ8LrcNXfLUckXsW1k",
+      "ata_author_fees_kUSDC": "2FoKwXNxz6Mfe7pVLiQzcrnfVzDPaTWs77RJvyfQ1cAuE7JnGxdTVTd7V6FWnwZRjGACDyo6NgRQs5ZNDyW9gKkJ",
+      "ata_launch_wallet_JitoSOL": "3g8EsZsrkxFybGiKrrgL6W3BhFQMEvgZ5ybvpgVDKbqK6ygphkCpyHaSg6nvfgyvsVRKjdbjELrZ2NtVkrnWc7zY",
+      "ata_launch_wallet_USDC": "3ieeRHuRPvxpcwf8EGFpuYSyXHAGBg7EstUu6tn76CBKcby7oKmxDgPnhAPqUPNwRWAzKAVmPTTwqsibAJjrv5vS",
+      "ata_launch_wallet_kSOL": "3igkUaiKucGhNE41FtDYsMRsnbxBjwCWZ2P24M75FEs3BNBdRZRW3uNzVd7y3XcFE2QsiHL6BrLSohKF9w3CZ7DG",
+      "ata_launch_wallet_kUSDC": "63ZbQXLuinMd3bozT7LfdueHTBGLhYSCYVguzCikBW5fCPXuS5Y9WJqTxFrqEwLcxUWhz3FBSyNkFsrsGcpQgdpn",
+      "ata_stage_pda_JitoSOL": "4XSNtDFzVYJybvmrttvUgEVaeLJqiPCDzRyuyKZr5NskwBybG37GqeYb7eeqgeM1UKhumyQKJ8DiUgZ3aVxRXooD",
+      "ata_stage_pda_USDC": "qfXpZ4bmWef6HbrfmpDH8CYxCiexUqKSoGqo81ZppwUjBWLfWv51KcpB4tXQ4XytTGcstph6zAnJDP6TRd1fZKC",
+      "ata_stage_pda_kSOL": "5qyFm1XyLL7wZL5UWAYvaMYCDxnJuLeVEZe5YdiB1yP5WrJA1gFExFpK71H66KsAkKt24PKdmH7z1Z9tKTwmPfrk",
+      "ata_stage_pda_kUSDC": "dGNgBnGXTeEtBKxooLoVpW4H6ebC2zyMbsrxEqWXT7QyG4zBZx21G4hax3wCkCXjZqusWCvFoN2U66rE5s4xCDw",
+      "fund_stage_pda": "2mXmBoZp8628Dr4pZDRLqpvWdFDYUFNToTiwUvAeCkWGJ9X1Prujm3tk56DXu1wjMsYUJRp7Js71msrCMZLEhbFf",
+      "hook_jito.stake": "4DLUvL71LYLbBbYVX9gEAhNRZTYG6JrrhZAT3qR51LHemvfHfBQUo33UHm7ABSjhUVkr1TRrxxuN6NLeBuGezppo",
+      "hook_jito.unstake": "LeLAktuhpFVE6MA8RRaP7xud7THjoY6BGbhYS6soi4nSknLxXZ7Z2wyaXU1doQwFXWYogUp6tmsdCwUxrARHkt9",
+      "hook_jupiter.swap": "5UAoqeV75RbzK4yCngfocBMQxACiQ1abRGhCBCsC34bEo9tUuj5bMjnctBZdnkmapF6LKcupo5mJsTx83xeBhVBG",
+      "hook_kamino.borrow": "3F7iZDxhTjQQWrUzReScET4K9W2JH1tfMCbvX41XyLjfBtUAHkFokx2Hu3ZNngfkX44TkyjNqDuESq8WwDwz7G4",
+      "hook_kamino.collateral.deposit": "3k4ZUuG3bFEbXCraA6TbTT8rgRkUfGhDQGbWF4hQ9FEcrQiMRXgwSNqMm5SiBHDNay5WJM3Ki2wZsc74nErE6zvG",
+      "hook_kamino.collateral.withdraw": "duRd14GQATsySpBDeJKbT51DaetsuCCyx1bNGL5Cb5kGxdrDgLBpttDdxoJ5XrFgggBv42S54cK2VBVvBBNZGUz",
+      "hook_kamino.repay": "45puhv5PZHZcz9izekWTyQRpCSLbxK5RA9pZ8LiGSTY571oEBrnV6X3A6JG3bZwA3U2R2CKcxgCHa58A4Qgoa8sH",
+      "hook_kamino.supply": "4BdqLGGsJXYU6qa6CahL68rPNfNXK55snf2rhB6Y53MupQ5aHv1gUn5T9hU48jR7CuT2jpcomHGgkY7ySXw3JQAv",
+      "hook_kamino.withdraw": "oXtJw8KyD1miyapAG5Q785A1cdNm1pfxTAD2RZrcpd2vzwRb9rmS4Vp5nVirxX3x7Levhe3LaBpe8baZK4dnfY3",
+      "init_config": "uh1svu2yKh18nfaW89DDkVpg6LnUYQFgp6CeDvroDifibR1WsPFsz3JEM3SKVteAw4MheGbBBEi7GdYaESiW9ws",
+      "spl_interface_kSOL": "jNmUHBBPGY4xPDfqBLaHF1uewbp7hGCbn4rBLcDFkLcigd1uZVU3zudHFkTeXir4Co6ALz3hzMSJoCQSRRJqZLp",
+      "spl_interface_kUSDC": "2ahWAkqmbE1JCtGKKRggYkmDHiKXGBcgdEyeTjJaXoNCeV1ufroPAVwBfh7uApBCcEE1oqSm5MRAKXuCZU2gogVu"
+    },
+    "rentBreakdown": [
+      {
+        "kind": "config",
+        "address": "9JtAtvLC4PNsKjEEiB1tNQN95GBgLfnRxqHotjaNfgZX",
+        "bytes": 77,
+        "lamports": 1041400,
+        "created": true,
+        "signature": "uh1svu2yKh18nfaW89DDkVpg6LnUYQFgp6CeDvroDifibR1WsPFsz3JEM3SKVteAw4MheGbBBEi7GdYaESiW9ws"
+      },
+      {
+        "kind": "stage_pda_reserve",
+        "address": "9hqmRBsxBtGkEywAuZ89McRqccDuVm68NJXcXNUQQdFf",
+        "bytes": 0,
+        "lamports": 1000000,
+        "created": true,
+        "signature": "2mXmBoZp8628Dr4pZDRLqpvWdFDYUFNToTiwUvAeCkWGJ9X1Prujm3tk56DXu1wjMsYUJRp7Js71msrCMZLEhbFf"
+      },
+      {
+        "kind": "ata_launch_wallet_USDC",
+        "address": "Av8RSeVyKJqAxy5kxtTJ9NKZxkSMkGU3HH468FFkaTAL",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3ieeRHuRPvxpcwf8EGFpuYSyXHAGBg7EstUu6tn76CBKcby7oKmxDgPnhAPqUPNwRWAzKAVmPTTwqsibAJjrv5vS"
+      },
+      {
+        "kind": "ata_stage_pda_USDC",
+        "address": "EReMZrn2sncKvS4KC6PZHqLTuLUd2EcaWrvSUWAvDyKf",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "qfXpZ4bmWef6HbrfmpDH8CYxCiexUqKSoGqo81ZppwUjBWLfWv51KcpB4tXQ4XytTGcstph6zAnJDP6TRd1fZKC"
+      },
+      {
+        "kind": "ata_author_fees_USDC",
+        "address": "D8XXVUmgnJbwyjDyMx9UxnvGV6Kp1uoPtPZi5q9kyWDB",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2Et7VCpivMbdhZNwfuLok8HmwyQQXsbBZu5AHeSYN2MdUxP5m3NmHjbiDdYrmX8GApwqSncwdwHPcsoCieWwSYLu"
+      },
+      {
+        "kind": "ata_launch_wallet_kUSDC",
+        "address": "FhSvAMfni1DEZfJhZjWhpFWNLoAPicPTxZb5sAJzXGkh",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "63ZbQXLuinMd3bozT7LfdueHTBGLhYSCYVguzCikBW5fCPXuS5Y9WJqTxFrqEwLcxUWhz3FBSyNkFsrsGcpQgdpn"
+      },
+      {
+        "kind": "ata_stage_pda_kUSDC",
+        "address": "6CReMss8TYkaCUSS4nwS8k3w8Y8n3qnndanHVEnT68pt",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "dGNgBnGXTeEtBKxooLoVpW4H6ebC2zyMbsrxEqWXT7QyG4zBZx21G4hax3wCkCXjZqusWCvFoN2U66rE5s4xCDw"
+      },
+      {
+        "kind": "ata_author_fees_kUSDC",
+        "address": "DPg4TjP5eTTAvbi2xzSMk9gcVwuLrjRmemc7HX8UfrGc",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2FoKwXNxz6Mfe7pVLiQzcrnfVzDPaTWs77RJvyfQ1cAuE7JnGxdTVTd7V6FWnwZRjGACDyo6NgRQs5ZNDyW9gKkJ"
+      },
+      {
+        "kind": "ata_launch_wallet_kSOL",
+        "address": "CPZjSrbpDjwYjWEJLLtYdr1TKKtT91S4NkEbKEqPN1T8",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3igkUaiKucGhNE41FtDYsMRsnbxBjwCWZ2P24M75FEs3BNBdRZRW3uNzVd7y3XcFE2QsiHL6BrLSohKF9w3CZ7DG"
+      },
+      {
+        "kind": "ata_stage_pda_kSOL",
+        "address": "DkxZRdkNtsKvYnFRJ38a5NjhKEK8sx6x4dqYTQAfDbBL",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "5qyFm1XyLL7wZL5UWAYvaMYCDxnJuLeVEZe5YdiB1yP5WrJA1gFExFpK71H66KsAkKt24PKdmH7z1Z9tKTwmPfrk"
+      },
+      {
+        "kind": "ata_author_fees_kSOL",
+        "address": "3KcNEJxGLQMVLcYRNHTMcj3Z323fkpKGmPZuvfX463zQ",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "2ywr2KFfgPrt4cfxNZmCn5pqavS65LYay9BywhypKsjRD1oJUnWAtrewyGjMKma6jhEumFJJ8LrcNXfLUckXsW1k"
+      },
+      {
+        "kind": "ata_launch_wallet_JitoSOL",
+        "address": "C2BhABbtrFj5THG9g9VMffHZgkppXVQp482H2fskrNHq",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "3g8EsZsrkxFybGiKrrgL6W3BhFQMEvgZ5ybvpgVDKbqK6ygphkCpyHaSg6nvfgyvsVRKjdbjELrZ2NtVkrnWc7zY"
+      },
+      {
+        "kind": "ata_stage_pda_JitoSOL",
+        "address": "GaEpo7LBEi6hoitriYD2DDhBdAc71imwPHtascotXJ6b",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "4XSNtDFzVYJybvmrttvUgEVaeLJqiPCDzRyuyKZr5NskwBybG37GqeYb7eeqgeM1UKhumyQKJ8DiUgZ3aVxRXooD"
+      },
+      {
+        "kind": "ata_author_fees_JitoSOL",
+        "address": "2UtgVuopbkEQWqsyAyicyKCbAJNMF1hXdZBEdfyzMQ4t",
+        "bytes": 165,
+        "lamports": 1488440,
+        "created": true,
+        "signature": "5EotDZUqzWJvgW46RwwnJn2fYmALfNmor6o5TNHV3dPUmUSp8wVaW6SRtFaPKGMbhCoChAdRgojq74U5389Y1jVV"
+      },
+      {
+        "kind": "spp_spl_interface_kUSDC",
+        "address": "JCb7g4CarJfnQJX8xoWrm9s1Wz2pbu7saGwhFEaojmf6",
+        "bytes": 165,
+        "lamports": 2387520,
+        "created": true,
+        "signature": "2ahWAkqmbE1JCtGKKRggYkmDHiKXGBcgdEyeTjJaXoNCeV1ufroPAVwBfh7uApBCcEE1oqSm5MRAKXuCZU2gogVu"
+      },
+      {
+        "kind": "spp_spl_interface_kSOL",
+        "address": "HpbgQjS2FkzKsFHsTyBPHsJwR1FGR4EjoKsE5tWAVVtF",
+        "bytes": 165,
+        "lamports": 2387520,
+        "created": true,
+        "signature": "jNmUHBBPGY4xPDfqBLaHF1uewbp7hGCbn4rBLcDFkLcigd1uZVU3zudHFkTeXir4Co6ALz3hzMSJoCQSRRJqZLp"
+      },
+      {
+        "kind": "hook_jito.stake",
+        "address": "2U6t4LZsA28f2YWt98oF71fpT8pg6NXQRaNz62UWwHnh",
+        "bytes": 536,
+        "lamports": 3373120,
+        "created": true,
+        "signature": "4DLUvL71LYLbBbYVX9gEAhNRZTYG6JrrhZAT3qR51LHemvfHfBQUo33UHm7ABSjhUVkr1TRrxxuN6NLeBuGezppo"
+      },
+      {
+        "kind": "hook_jito.unstake",
+        "address": "AAviWNGwWm325DVMtdns7KRYdCQHv8LSGYaD14pSixjb",
+        "bytes": 608,
+        "lamports": 3738880,
+        "created": true,
+        "signature": "LeLAktuhpFVE6MA8RRaP7xud7THjoY6BGbhYS6soi4nSknLxXZ7Z2wyaXU1doQwFXWYogUp6tmsdCwUxrARHkt9"
+      },
+      {
+        "kind": "hook_jupiter.swap",
+        "address": "8HiKfGPnbznq9TitBzaDQk7LJDx7XSuAijZAjLUpLycy",
+        "bytes": 322,
+        "lamports": 2286000,
+        "created": true,
+        "signature": "5UAoqeV75RbzK4yCngfocBMQxACiQ1abRGhCBCsC34bEo9tUuj5bMjnctBZdnkmapF6LKcupo5mJsTx83xeBhVBG"
+      },
+      {
+        "kind": "hook_kamino.borrow",
+        "address": "GSAZ7nQjpHKQ3c4GADa2qrgRHXnyPZriD9pwDa651YUo",
+        "bytes": 703,
+        "lamports": 4221480,
+        "created": true,
+        "signature": "3F7iZDxhTjQQWrUzReScET4K9W2JH1tfMCbvX41XyLjfBtUAHkFokx2Hu3ZNngfkX44TkyjNqDuESq8WwDwz7G4"
+      },
+      {
+        "kind": "hook_kamino.collateral.deposit",
+        "address": "81UHc9nTGtkRQUrx6goTRJTT2mq6NdP3bgXztysHW4dt",
+        "bytes": 785,
+        "lamports": 4638040,
+        "created": true,
+        "signature": "3k4ZUuG3bFEbXCraA6TbTT8rgRkUfGhDQGbWF4hQ9FEcrQiMRXgwSNqMm5SiBHDNay5WJM3Ki2wZsc74nErE6zvG"
+      },
+      {
+        "kind": "hook_kamino.collateral.withdraw",
+        "address": "41kReRwdfXXgBdB8U6pJVEFjxArTbvMCnGTjuQBdhLPa",
+        "bytes": 786,
+        "lamports": 4643120,
+        "created": true,
+        "signature": "duRd14GQATsySpBDeJKbT51DaetsuCCyx1bNGL5Cb5kGxdrDgLBpttDdxoJ5XrFgggBv42S54cK2VBVvBBNZGUz"
+      },
+      {
+        "kind": "hook_kamino.repay",
+        "address": "366X4TkqkqJKn1FB5EMEmUbgRScfNUu2U8YceoC4UZL2",
+        "bytes": 597,
+        "lamports": 3683000,
+        "created": true,
+        "signature": "45puhv5PZHZcz9izekWTyQRpCSLbxK5RA9pZ8LiGSTY571oEBrnV6X3A6JG3bZwA3U2R2CKcxgCHa58A4Qgoa8sH"
+      },
+      {
+        "kind": "hook_kamino.supply",
+        "address": "EAMGsytxDxoa9zSa5fXThWBqrpvtbyYmjthSroCZN9k6",
+        "bytes": 626,
+        "lamports": 3830320,
+        "created": true,
+        "signature": "4BdqLGGsJXYU6qa6CahL68rPNfNXK55snf2rhB6Y53MupQ5aHv1gUn5T9hU48jR7CuT2jpcomHGgkY7ySXw3JQAv"
+      },
+      {
+        "kind": "hook_kamino.withdraw",
+        "address": "3zEMRjd5ZHJxWkYVR5a7AdqA6iyKwXTwB939LYjRivLT",
+        "bytes": 628,
+        "lamports": 3840480,
+        "created": true,
+        "signature": "oXtJw8KyD1miyapAG5Q785A1cdNm1pfxTAD2RZrcpd2vzwRb9rmS4Vp5nVirxX3x7Levhe3LaBpe8baZK4dnfY3"
+      }
+    ]
+  }
+}

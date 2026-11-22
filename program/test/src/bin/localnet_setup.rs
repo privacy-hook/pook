@@ -10,7 +10,8 @@ use std::{path::Path, str::FromStr, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use pook_program::{
-    instructions::config::InitConfigArgs,
+    instructions::config::{InitConfigArgs, SetConfigArgs},
+    state::Config,
     pda::{
         find_ata, find_author_fees_pda, find_config_pda, find_hook_pda, find_stage_pda,
         hook_id_hash, SYSTEM_PROGRAM_ID,
@@ -20,7 +21,7 @@ use pook_sdk::{
     hooks::{
         launch_hooks, JITOSOL_MINT_ID, KAMINO_KSOL_MINT_ID, KAMINO_KUSDC_MINT_ID,
     },
-    instructions::{init_config_ix, publish_hook_ix},
+    instructions::{init_config_ix, publish_hook_ix, set_config_ix},
 };
 use solana_address::Address;
 use solana_instruction::{AccountMeta, Instruction};
@@ -281,22 +282,34 @@ fn main() -> Result<()> {
     let author_share_env = std::env::var("AUTHOR_SHARE_BPS")
         .ok()
         .and_then(|v| v.parse::<u16>().ok());
-    let run_fee_bps = run_fee_env.unwrap_or(30);
-    let author_share_bps = author_share_env.unwrap_or(5000);
-    if run_fee_env.is_none() || author_share_env.is_none() {
-        println!(
-            "  Config fees:   RUN_FEE_BPS={run_fee_bps}, AUTHOR_SHARE_BPS={author_share_bps} (localnet placeholders; set env vars to override)"
-        );
-    } else {
-        println!("  Config fees:   RUN_FEE_BPS={run_fee_bps}, AUTHOR_SHARE_BPS={author_share_bps}");
-    }
+    // The launch terms by default: 10 bps run fee, 30% of it to the hook's author.
+    let run_fee_bps = run_fee_env.unwrap_or(10);
+    let author_share_bps = author_share_env.unwrap_or(3000);
+    println!("  Config fees:   RUN_FEE_BPS={run_fee_bps}, AUTHOR_SHARE_BPS={author_share_bps}");
 
-    if client
+    let existing = client
         .rpc()
         .get_account(to_pk(config_pda))
-        .map_err(|e| anyhow!("{e:?}"))?
-        .is_none()
-    {
+        .map_err(|e| anyhow!("{e:?}"))?;
+    if let Some(acct) = existing {
+        let config: Config = borsh::from_slice(&acct.data[..Config::LEN])?;
+        if config.run_fee_bps != run_fee_bps || config.author_share_bps != author_share_bps {
+            let ix = set_config_ix(
+                to_addr(admin.pubkey()),
+                SetConfigArgs {
+                    admin: config.admin,
+                    fee_recipient: config.fee_recipient,
+                    run_fee_bps,
+                    author_share_bps,
+                },
+            )?;
+            // set_config takes the admin read-only, so another key pays the fee.
+            send_ixs(&client, &[ix], &[&relayer, &admin], 200_000)?;
+            println!("  Config fees updated at {config_pda}");
+        } else {
+            println!("  Config init:   already initialized at {config_pda}");
+        }
+    } else {
         let ix = init_config_ix(
             to_addr(admin.pubkey()),
             InitConfigArgs {
@@ -307,8 +320,6 @@ fn main() -> Result<()> {
         )?;
         send_ixs(&client, &[ix], &[&admin], 200_000)?;
         println!("  Config init:   {config_pda}");
-    } else {
-        println!("  Config init:   already initialized at {config_pda}");
     }
 
     // 5. Publish all nine launch hooks.

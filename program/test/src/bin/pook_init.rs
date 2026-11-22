@@ -344,6 +344,9 @@ fn main() -> Result<()> {
         ("kUSDC", to_pk(KAMINO_KUSDC_MINT_ID)),
         ("kSOL", to_pk(KAMINO_KSOL_MINT_ID)),
         ("JitoSOL", to_pk(JITOSOL_MINT_ID)),
+        // Jupiter Lend fTokens, the out assets of `jupiter.lend.supply`.
+        ("jlUSDC", Pubkey::from_str("9BEcn9aPEmhSPbPQeFGjidRiEKki46fVQDyPpSQXPA2D")?),
+        ("jlSOL", Pubkey::from_str("2uQsyo1fXXQkDtcpXnLofWy88PxcvnfH2L8FPSE62FVU")?),
     ];
     let mut ata_records: Vec<Value> = Vec::new();
     for (label, mint) in payout_mints {
@@ -483,7 +486,7 @@ fn main() -> Result<()> {
         }
     }
 
-    // 5. Publish all nine launch hooks from `program/hooks/*.json` (idempotent).
+    // 5. Publish every hook in `program/hooks/*.json` (idempotent).
     let mut hook_files: Vec<PathBuf> = std::fs::read_dir(&cli.hooks_dir)
         .with_context(|| format!("reading hooks dir {}", cli.hooks_dir.display()))?
         .filter_map(|e| e.ok().map(|e| e.path()))
