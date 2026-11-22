@@ -29,7 +29,7 @@ A relayer signs and pays for every proven transaction, so the holder's key never
 | `program/program/src/verifier/` | On-chain Groth16 verifiers for the ceremony's keys |
 | `program/artifacts/` | Circuit bytecode, proving and verifying keys from the ceremony, served by the prover |
 | `program/sdk/` | Rust SDK: instruction builders, proving, notes, and the nine launch hooks |
-| `program/hooks/` | The launch hooks as `publish_hook` arguments: `jupiter.swap`, `kamino.supply`, `kamino.withdraw`, `jito.stake`, `jito.unstake`, `kamino.collateral.deposit`, `kamino.borrow`, `kamino.repay`, `kamino.collateral.withdraw` |
+| `program/hooks/` | Every hook Pook publishes, as `publish_hook` arguments: the nine launch hooks `jupiter.swap`, `kamino.supply`, `kamino.withdraw`, `jito.stake`, `jito.unstake`, `kamino.collateral.deposit`, `kamino.borrow`, `kamino.repay`, `kamino.collateral.withdraw`, then `jupiter.lend.supply` and `jupiter.lend.withdraw` |
 | `program/test/` | The end-to-end suite and the localnet bootstrap and `pook_init` binaries |
 | `program/scripts/` | `build-circuits.sh`, `deploy.sh`, `init.sh` |
 | `program/ceremony/` | The phase-2 trusted setup for the six circuits and its public transcript |
@@ -38,7 +38,7 @@ A relayer signs and pays for every proven transaction, so the holder's key never
 | `hooks/` | Display metadata for the launch hooks, written with `defineHook` |
 | `src/roles/` | The services: `api`, `relayer`, `prover`, `indexer`, `crank` |
 | `prisma/` | PostgreSQL schema and migrations |
-| `localnet/` | A Rings localnet with the protocols the launch hooks call, captured from mainnet |
+| `localnet/` | A Rings localnet with the protocols the hooks call, captured from mainnet |
 | `scripts/flows.mjs` | Runs the user flows through `@pook/sdk` against a running stack |
 
 ## Services
@@ -96,14 +96,15 @@ zolana vks check --so program/deploy/pook_program.so --expect program/ceremony/t
 
 ## Test on a localnet
 
-The localnet runs the Rings programs, Photon and the Rings prover through `zolana dev start`, with Jupiter, Meteora, Raydium, Kamino, Jito and the SPL programs loaded from a mainnet capture.
+The localnet runs the Rings programs, Photon and the Rings prover through `zolana dev start`, with Jupiter, Jupiter Lend, Meteora, Raydium, Kamino, Jito and the SPL programs loaded from a mainnet capture.
 
 ```bash
 MAINNET_RPC_URL=<mainnet rpc> JUPITER_API_KEY=<key> node localnet/capture.mjs
+MAINNET_RPC_URL=<mainnet rpc> node localnet/capture-jupiter-lend.mjs
 bash localnet/start.sh
 ```
 
-`start.sh` loads `program/deploy/pook_program.so`, creates and funds the holder, relayer and admin keys under `localnet/keys/`, runs `init_config` and publishes the nine launch hooks. Then:
+`start.sh` loads `program/deploy/pook_program.so`, creates and funds the holder, relayer and admin keys under `localnet/keys/`, runs `init_config`, then runs `init.sh` against the localnet, which publishes every hook in `program/hooks/`. `localnet/capture-jupiter-lend.mjs` adds the Jupiter Lend programs and markets to the capture. Then:
 
 ```bash
 cd program

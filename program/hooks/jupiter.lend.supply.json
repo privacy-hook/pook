@@ -1,0 +1,156 @@
+{
+  "hook_id": "jupiter.lend.supply",
+  "target_program": "jup3YeL8QhtSx1e253b2FDvsMNC87fDrgQZivbrndc9",
+  "kind": "Flow",
+  "mint_in": {
+    "type": "Any"
+  },
+  "mint_out": {
+    "type": "Any"
+  },
+  "wrap_sol_in": true,
+  "unwrap_sol_out": false,
+  "data_template": [
+    116,
+    144,
+    16,
+    97,
+    118,
+    109,
+    40,
+    119,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "data_slots": [
+    {
+      "offset": 8,
+      "len": 8,
+      "kind": "AmountInU64Le"
+    },
+    {
+      "offset": 16,
+      "len": 8,
+      "kind": "MinOutU64Le"
+    }
+  ],
+  "account_slots": [
+    {
+      "kind": "StagePda",
+      "is_writable": true,
+      "is_signer": true,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageIn",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "StageOut",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "5nmGjA4s7ATzpBQXC5RNceRpaJ7pYw2wKsNBWyuSAZV6"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": true,
+      "is_signer": false,
+      "pubkey": "7s1da8DduuBFqGra5bJBjpnvL5E9mGzCuMk1Qkh4or2Z"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "jupeiUmn818Jg1ekPURTpr4mFo29p46vygyykFJ3wZC"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Caller",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+    },
+    {
+      "kind": "Fixed",
+      "is_writable": false,
+      "is_signer": false,
+      "pubkey": "11111111111111111111111111111111"
+    }
+  ],
+  "companions": []
+}

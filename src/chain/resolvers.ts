@@ -60,6 +60,13 @@ const SYSVAR_INSTRUCTIONS = new PublicKey('Sysvar1nstructions1111111111111111111
 const SYSVAR_RENT = new PublicKey(SYSVAR_RENT_ID)
 const SYSTEM_PROGRAM = new PublicKey(SYSTEM_PROGRAM_ID)
 
+// Jupiter Lend (Earn): the lending program and its liquidity layer.
+const JUPITER_LEND_PROGRAM = new PublicKey('jup3YeL8QhtSx1e253b2FDvsMNC87fDrgQZivbrndc9')
+const JUPITER_LIQUIDITY_PROGRAM = new PublicKey('jupeiUmn818Jg1ekPURTpr4mFo29p46vygyykFJ3wZC')
+const JUPITER_LENDING_DISC = Buffer.from([135, 199, 82, 16, 249, 131, 182, 241])
+/** `token_exchange_price` is fixed point with 12 decimals. */
+const JUPITER_EXCHANGE_PRICE_PRECISION = 1_000_000_000_000n
+
 // Kamino Anchor discriminators (sha256("global:<ix>")[0..8])
 const KAMINO_REFRESH_RESERVE_DISC = Buffer.from([2, 218, 138, 235, 79, 201, 25, 102])
 const KAMINO_REFRESH_OBLIGATION_DISC = Buffer.from([33, 132, 147, 228, 151, 192, 72, 89])
@@ -454,6 +461,157 @@ async function resolveJito(ctx: QuoteResolveContext): Promise<{
     setupInstructions,
     companionInstructions: [],
     routeSummary: isStake ? 'SOL -> JitoSOL via Jito Stake Pool' : 'JitoSOL -> SOL via Jito Stake Pool',
+  }
+}
+
+type JupiterLendMarket = {
+  mint: PublicKey
+  fTokenMint: PublicKey
+  lending: PublicKey
+  tokenProgram: PublicKey
+  tokenExchangePrice: bigint
+  rewardsRateModel: PublicKey
+  supplyReserve: PublicKey
+  supplyPosition: PublicKey
+}
+
+/** Lending account by fToken mint; a market never changes its accounts, so one lookup per mint. */
+const jupiterLendingByFToken = new Map<string, PublicKey>()
+
+/** Reads one Jupiter Lend market from chain, named by its underlying mint or by its earn token (fToken). */
+async function readJupiterLendMarket(connection: Connection, named: PublicKey): Promise<JupiterLendMarket> {
+  const pda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, JUPITER_LEND_PROGRAM)[0]
+  const lendingFor = (mint: PublicKey) =>
+    pda([Buffer.from('lending'), mint.toBuffer(), pda([Buffer.from('f_token_mint'), mint.toBuffer()]).toBuffer()])
+  const decode = (data: Buffer | null | undefined) =>
+    data && data.length >= 195 && data.subarray(0, 8).equals(JUPITER_LENDING_DISC) ? data : null
+
+  let lending = lendingFor(named)
+  let data = decode((await connection.getAccountInfo(lending, 'confirmed'))?.data)
+  if (!data) {
+    // Not an underlying asset: find the Lending account whose f_token_mint is this mint.
+    let found = jupiterLendingByFToken.get(named.toBase58())
+    if (!found) {
+      const hits = await connection.getProgramAccounts(JUPITER_LEND_PROGRAM, {
+        commitment: 'confirmed',
+        dataSlice: { offset: 0, length: 0 },
+        filters: [
+          { dataSize: 196 },
+          { memcmp: { offset: 40, bytes: named.toBase58() } },
+        ],
+      })
+      found = hits[0]?.pubkey
+      if (found) jupiterLendingByFToken.set(named.toBase58(), found)
+    }
+    if (found) {
+      lending = found
+      data = decode((await connection.getAccountInfo(lending, 'confirmed'))?.data)
+    }
+  }
+  if (!data) {
+    return fail('NO_ROUTE', `Jupiter Lend has no market for ${named.toBase58()}.`, { stage: 'build', retryable: false })
+  }
+  const mint = new PublicKey(data.subarray(8, 40))
+  return {
+    mint,
+    fTokenMint: new PublicKey(data.subarray(40, 72)),
+    lending,
+    tokenProgram: await detectTokenProgram(connection, mint),
+    tokenExchangePrice: data.readBigUInt64LE(115),
+    rewardsRateModel: new PublicKey(data.subarray(75, 107)),
+    supplyReserve: new PublicKey(data.subarray(131, 163)),
+    supplyPosition: new PublicKey(data.subarray(163, 195)),
+  }
+}
+
+/** The Caller accounts of `jupiter.lend.supply` and `jupiter.lend.withdraw` in slot order, and the quote. */
+async function resolveJupiterLend(ctx: QuoteResolveContext): Promise<{
+  mintIn: string
+  mintOut: string
+  expectedOut: bigint
+  minimumOut: bigint
+  callerData: Uint8Array
+  callerAccounts: { pubkey: string; isWritable: boolean; isSigner: boolean }[]
+  callerRemainingWritable: number[]
+  resolvedAccounts: ResolvedAccount[]
+  setupInstructions: ResolvedInstruction[]
+  companionInstructions: ResolvedInstruction[]
+  routeSummary: string
+}> {
+  const { connection, programId, hook, onChainHook, request, relayerPubkey } = ctx
+  const isSupply = hook.id === 'jupiter.lend.supply'
+  const named = request.mintIn ?? request.mintOut
+  if (!named) return fail('VALIDATION_ERROR', 'Choose the asset to supply or withdraw.', { stage: 'validation', retryable: false })
+  const market = await readJupiterLendMarket(connection, new PublicKey(isNativeSolMint(named) ? WSOL_MINT : named))
+  const amountIn = BigInt(request.amountIn)
+  const slippageBps = request.slippageBps ?? 50
+
+  // Shares and assets convert at the stored exchange price; the minimum out leaves room for the update.
+  const expectedOut = isSupply
+    ? (amountIn * JUPITER_EXCHANGE_PRICE_PRECISION) / market.tokenExchangePrice
+    : (amountIn * market.tokenExchangePrice) / JUPITER_EXCHANGE_PRICE_PRECISION
+  const minOut = minimumOut(expectedOut, slippageBps)
+
+  const [stagePda] = findStagePda(programId)
+  const [stageAsset] = findAta(stagePda, market.mint, market.tokenProgram)
+  const [stageFToken] = findAta(stagePda, market.fTokenMint, market.tokenProgram)
+  const relayerPk = new PublicKey(relayerPubkey)
+  const setupInstructions: ResolvedInstruction[] = [
+    serializeSetupIx(createAssociatedTokenAccountIdempotentInstruction(relayerPk, stageAsset, stagePda, market.mint, market.tokenProgram)),
+    serializeSetupIx(createAssociatedTokenAccountIdempotentInstruction(relayerPk, stageFToken, stagePda, market.fTokenMint, market.tokenProgram)),
+  ]
+
+  const liquidityPda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, JUPITER_LIQUIDITY_PROGRAM)[0]
+  const liquidity = liquidityPda([Buffer.from('liquidity')])
+  const [lendingAdmin] = PublicKey.findProgramAddressSync([Buffer.from('lending_admin')], JUPITER_LEND_PROGRAM)
+  const [vault] = findAta(liquidity, market.mint, market.tokenProgram)
+  const byName: Record<string, PublicKey> = {
+    mint: market.mint,
+    lending: market.lending,
+    fTokenMint: market.fTokenMint,
+    supplyTokenReservesLiquidity: market.supplyReserve,
+    lendingSupplyPositionOnLiquidity: market.supplyPosition,
+    rateModel: liquidityPda([Buffer.from('rate_model'), market.mint.toBuffer()]),
+    vault,
+    claimAccount: liquidityPda([Buffer.from('user_claim'), lendingAdmin.toBuffer(), market.mint.toBuffer()]),
+    rewardsRateModel: market.rewardsRateModel,
+    tokenProgram: market.tokenProgram,
+  }
+
+  const callerAccounts: { pubkey: string; isWritable: boolean; isSigner: boolean }[] = []
+  const resolvedAccounts: ResolvedAccount[] = []
+  onChainHook.accountSlots.forEach((slot, index) => {
+    const name = hook.accountsTemplate[index]?.name ?? `account_${index}`
+    let addr: string
+    if (slot.kind === 'StagePda') addr = stagePda.toBase58()
+    else if (slot.kind === 'StageIn') addr = (isSupply ? stageAsset : stageFToken).toBase58()
+    else if (slot.kind === 'StageOut') addr = (isSupply ? stageFToken : stageAsset).toBase58()
+    else if (slot.kind === 'Fixed') addr = slot.pubkey
+    else {
+      const pk = byName[name]
+      if (!pk) return fail('CONFIGURATION_REQUIRED', `No Jupiter Lend account for slot ${name}.`, { stage: 'build', retryable: false })
+      addr = pk.toBase58()
+    }
+    resolvedAccounts.push({ index, name, address: addr, writable: slot.isWritable, signer: slot.isSigner })
+    if (slot.kind === 'Fixed' || slot.kind === 'Caller') {
+      callerAccounts.push({ pubkey: addr, isWritable: slot.isWritable, isSigner: false })
+    }
+  })
+
+  const asset = assetMeta(market.mint.toBase58())?.symbol ?? market.mint.toBase58().slice(0, 4)
+  const earn = assetMeta(market.fTokenMint.toBase58())?.symbol ?? `jl${asset}`
+  return {
+    mintIn: (isSupply ? market.mint : market.fTokenMint).toBase58(),
+    mintOut: (isSupply ? market.fTokenMint : market.mint).toBase58(),
+    expectedOut,
+    minimumOut: minOut,
+    callerData: new Uint8Array(0),
+    callerAccounts,
+    callerRemainingWritable: [],
+    resolvedAccounts,
+    setupInstructions,
+    companionInstructions: [],
+    routeSummary: isSupply ? `${asset} -> ${earn} via Jupiter Lend` : `${earn} -> ${asset} via Jupiter Lend`,
   }
 }
 
@@ -967,7 +1125,9 @@ export async function resolveHookQuote(ctx: QuoteResolveContext): Promise<QuoteR
       ? await resolveJupiterSwap(ctx)
       : hook.id === 'jito.stake' || hook.id === 'jito.unstake'
         ? await resolveJito(ctx)
-        : hook.protocol === 'kamino'
+        : hook.id === 'jupiter.lend.supply' || hook.id === 'jupiter.lend.withdraw'
+          ? await resolveJupiterLend(ctx)
+          : hook.protocol === 'kamino'
           ? await resolveKamino(ctx)
           : await resolveGenericHook(ctx)
 

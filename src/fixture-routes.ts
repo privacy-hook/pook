@@ -2,6 +2,7 @@ import type { Hono } from 'hono'
 import { PublicKey } from '@solana/web3.js'
 import {
   Address,
+  computeFeeSplit,
   ClaimAuthorFeesBuildRequest,
   EnterBuildRequest,
   HookId,
@@ -43,6 +44,8 @@ import {
 import {
   FIXTURE_ADDRESSES,
   FIXTURE_ASSETS,
+  FIXTURE_AUTHOR_SHARE_BPS,
+  FIXTURE_RUN_FEE_BPS,
   FIXTURE_AUTHOR_FEES,
   FIXTURE_CONFIG,
   FIXTURE_ERRORS,
@@ -298,8 +301,10 @@ export function registerFixtureRoutes(app: Hono<{ Variables: FixtureVariables<Sc
         : 0n
     const feeAsset = outAsset ?? inAsset
     const relayerFeeBig = mintOut === null ? 0n : feeAsset?.decimals === 9 ? 2_000_000n : 500_000n
-    const netOutBig = expectedOutBig > relayerFeeBig ? expectedOutBig - relayerFeeBig : 0n
-    const minimumNetOutBig = minOutBig > relayerFeeBig ? minOutBig - relayerFeeBig : 0n
+    const split = computeFeeSplit(mintOut === null ? 0n : expectedOutBig, FIXTURE_RUN_FEE_BPS, FIXTURE_AUTHOR_SHARE_BPS)
+    const minRunFee = computeFeeSplit(mintOut === null ? 0n : minOutBig, FIXTURE_RUN_FEE_BPS, FIXTURE_AUTHOR_SHARE_BPS).runFee
+    const netOutBig = expectedOutBig > split.runFee + relayerFeeBig ? expectedOutBig - split.runFee - relayerFeeBig : 0n
+    const minimumNetOutBig = minOutBig > minRunFee + relayerFeeBig ? minOutBig - minRunFee - relayerFeeBig : 0n
     const expiresAt = new Date(Date.now() + 90_000).toISOString()
     const quoteId = `quote_${state.seq++}`
 
@@ -317,11 +322,11 @@ export function registerFixtureRoutes(app: Hono<{ Variables: FixtureVariables<Sc
       ...(minimumOutFromCaller ? { minimumOutFromCaller: true } : {}),
       slippageBps: body.slippageBps,
       fees: {
-        runFeeAmount: '0',
-        runFeeBps: null,
-        authorShareAmount: '0',
-        authorShareBps: null,
-        protocolShareAmount: '0',
+        runFeeAmount: split.runFee.toString(),
+        runFeeBps: FIXTURE_RUN_FEE_BPS,
+        authorShareAmount: split.authorFee.toString(),
+        authorShareBps: FIXTURE_AUTHOR_SHARE_BPS,
+        protocolShareAmount: split.protocolFee.toString(),
         relayerFeeAmount: relayerFeeBig.toString(),
         feeAssetMint: mintOut,
         feeAssetSymbol: outAsset?.symbol ?? hook.assetOutSymbol,
@@ -614,7 +619,7 @@ export function registerFixtureRoutes(app: Hono<{ Variables: FixtureVariables<Sc
       mintOut: mintOut ?? null,
       assetOutSymbol: outAsset?.symbol ?? hook.assetOutSymbol,
       amountOut,
-      runFeeAmount: '0',
+      runFeeAmount: computeFeeSplit(BigInt(amountOut), FIXTURE_RUN_FEE_BPS, FIXTURE_AUTHOR_SHARE_BPS).runFee.toString(),
       relayerFeeAmount: body.relayerFee,
       stageAuthority: addrs.stagePda,
       relayer: FIXTURE_ADDRESSES.relayer,
@@ -1002,7 +1007,7 @@ export function registerFixtureRoutes(app: Hono<{ Variables: FixtureVariables<Sc
       assetInSymbol: body.hook.assetInSymbol ?? inAsset?.symbol ?? null,
       assetOutSymbol: body.hook.assetOutSymbol ?? outAsset?.symbol ?? null,
       author: body.author,
-      authorShareBps: null,
+      authorShareBps: FIXTURE_AUTHOR_SHARE_BPS,
       immutable: true,
       sdkCall: `pook.run("${body.hook.id}", { amount })`,
       stats: { runsCount: 0, volumeIn: '0', volumeOut: '0', lastRunAt: null },

@@ -13,6 +13,8 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
+  createSyncNativeInstruction,
+  createTransferCheckedInstruction,
 } from '@solana/spl-token'
 import {
   Address,
@@ -1063,20 +1065,47 @@ export function registerChainRoutes(
 
     // Stage-in and stage-out are the stage's token accounts for the hook's mints, as in a run (the stage
     // PDA itself only for native SOL that isn't wrapped); they are created first, so the target sees them.
-    const stageToken = (c: (typeof onChainArgs)['mintIn'], wrapped: boolean): PublicKey | null => {
-      if (c.kind === 'Spl') return new PublicKey(c.mint)
-      if (c.kind === 'Sol' && wrapped) return new PublicKey(WSOL_MINT)
-      return null
+    // A mint left as Any takes the sample mint named for it.
+    const stageToken = (c: (typeof onChainArgs)['mintIn'], wrapped: boolean, sample: string | undefined): PublicKey | null => {
+      const mint = c.kind === 'Spl' ? c.mint : c.kind === 'Sol' ? WSOL_MINT : c.kind === 'Any' ? sample : undefined
+      if (!mint) return null
+      if (isNativeSolMint(mint) && !wrapped) return null
+      return new PublicKey(isNativeSolMint(mint) ? WSOL_MINT : mint)
     }
-    const stageMints = { StageIn: stageToken(onChainArgs.mintIn, onChainArgs.wrapSolIn), StageOut: stageToken(onChainArgs.mintOut, onChainArgs.unwrapSolOut) }
+    const stageMints = {
+      StageIn: stageToken(onChainArgs.mintIn, onChainArgs.wrapSolIn, body.sampleMintIn),
+      StageOut: stageToken(onChainArgs.mintOut, onChainArgs.unwrapSolOut, body.sampleMintOut),
+    }
+    // The relayer pays for runs, so it pays for the simulation too (the stage keeps only a rent reserve).
+    const relayer = await fetchRelayerIdentity()
+    const payer = relayer === SystemProgram.programId.toBase58() ? stagePda : new PublicKey(relayer)
     const setupIxs: TransactionInstruction[] = []
-    const stageAccount = (kind: 'StageIn' | 'StageOut'): PublicKey => {
+    const stageAtas: Partial<Record<'StageIn' | 'StageOut', PublicKey>> = {}
+    for (const kind of ['StageIn', 'StageOut'] as const) {
       const mint = stageMints[kind]
-      if (!mint) return stagePda
-      const [ata] = findAta(stagePda, mint, TOKEN_PROGRAM_ID)
-      setupIxs.push(createAssociatedTokenAccountIdempotentInstruction(stagePda, ata, stagePda, mint, TOKEN_PROGRAM_ID))
-      return ata
+      if (!mint) continue
+      const tokenProgram = await detectTokenProgram(rpc.connection, mint)
+      const [ata] = findAta(stagePda, mint, tokenProgram)
+      setupIxs.push(createAssociatedTokenAccountIdempotentInstruction(payer, ata, stagePda, mint, tokenProgram))
+      stageAtas[kind] = ata
     }
+    // Funding: the sample input moves into the stage the way a run's withdrawal leg would put it there.
+    const stageInAta = stageAtas.StageIn
+    if (stageInAta && body.sampleFundFrom) {
+      const source = new PublicKey(body.sampleFundFrom)
+      const sourceInfo = await rpc.connection.getAccountInfo(source, 'confirmed')
+      if (!sourceInfo || sourceInfo.data.length < 72) {
+        return fail('VALIDATION_ERROR', 'sampleFundFrom is not a token account.', { stage: 'validation', retryable: false })
+      }
+      const owner = new PublicKey(sourceInfo.data.subarray(32, 64))
+      const mint = stageMints.StageIn!
+      const decimals = (await rpc.connection.getParsedAccountInfo(mint, 'confirmed')).value?.data
+      const mintDecimals = decimals && 'parsed' in decimals ? Number(decimals.parsed.info.decimals) : 0
+      setupIxs.push(createTransferCheckedInstruction(source, mint, stageInAta, owner, sampleAmount, mintDecimals, [], sourceInfo.owner))
+    } else if (stageInAta && stageMints.StageIn?.toBase58() === WSOL_MINT && !payer.equals(stagePda)) {
+      setupIxs.push(SystemProgram.transfer({ fromPubkey: payer, toPubkey: stageInAta, lamports: sampleAmount }), createSyncNativeInstruction(stageInAta))
+    }
+    const stageAccount = (kind: 'StageIn' | 'StageOut'): PublicKey => stageAtas[kind] ?? stagePda
 
     const keys = onChainArgs.accountSlots
       .filter((s) => s.kind !== 'CallerRemaining')
@@ -1106,15 +1135,23 @@ export function registerChainRoutes(
     const latest = await rpc.connection.getLatestBlockhash('confirmed')
     const tx = new VersionedTransaction(
       new TransactionMessage({
-        payerKey: stagePda,
+        payerKey: payer,
         recentBlockhash: latest.blockhash,
-        instructions: [ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }), ...setupIxs, targetIx],
+        instructions: [ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }), ...setupIxs, targetIx],
       }).compileToV0Message(),
     )
     const wireBytes = tx.serialize().length
-    const sim = await rpc.connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })
+    const stageOut = stageAtas.StageOut
+    const sim = await rpc.connection.simulateTransaction(tx, {
+      sigVerify: false,
+      replaceRecentBlockhash: true,
+      commitment: 'confirmed',
+      ...(stageOut ? { accounts: { encoding: 'base64' as const, addresses: [stageOut.toBase58()] } } : {}),
+    })
     const logs = sim.value.logs ?? []
     const computeUnits = sim.value.unitsConsumed ?? null
+    const stageOutData = sim.value.accounts?.[0]?.data?.[0]
+    const stageOutAmount = stageOutData ? Buffer.from(stageOutData, 'base64').readBigUInt64LE(64).toString() : undefined
 
     if (sim.value.err) {
       return c.json({
@@ -1137,6 +1174,7 @@ export function registerChainRoutes(
       logs,
       estimatedTxBytes: wireBytes,
       accountCount: keys.length,
+      ...(stageOutAmount !== undefined ? { stageOutAmount } : {}),
     })
   })
 

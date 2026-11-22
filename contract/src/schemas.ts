@@ -768,6 +768,8 @@ export const RelaySubmissionResponse = z.object({
   seatAddress: Address.nullable().optional(),
   relayerFee: BaseUnits,
   run: PublicRun.nullable().optional(),
+  /** For a confirmed run with an out asset: what entered the holder's new note, measured from the transaction. */
+  netOut: BaseUnits.nullable().optional(),
   error: errors.ErrorDetail.optional(),
   expiresAt: Timestamp,
   updatedAt: Timestamp,
@@ -971,6 +973,8 @@ export const SimulateHookRequest = z.strictObject({
   sampleMintIn: Address.optional(),
   sampleMintOut: Address.optional(),
   sampleArgs: z.record(z.string(), z.string()).optional(),
+  /** A token account holding the input asset; the simulation moves `sampleAmountIn` from it to the stage first. */
+  sampleFundFrom: Address.optional(),
 })
 export type SimulateHookRequest = z.input<typeof SimulateHookRequest>
 
@@ -980,6 +984,8 @@ export const SimulateHookResponse = z.object({
   logs: z.array(z.string()),
   estimatedTxBytes: z.number().int().nullable(),
   accountCount: z.number().int(),
+  /** What the stage's output account holds after the simulated instruction, in base units. */
+  stageOutAmount: U64.optional(),
   error: errors.ErrorDetail.optional(),
 })
 export type SimulateHookResponse = z.output<typeof SimulateHookResponse>

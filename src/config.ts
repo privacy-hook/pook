@@ -20,6 +20,8 @@ export const JITOSOL_MINT = 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn'
 export const MSOL_MINT = 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So'
 export const KUSDC_MINT = 'B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D'
 export const KSOL_MINT = '2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1'
+export const JLUSDC_MINT = '9BEcn9aPEmhSPbPQeFGjidRiEKki46fVQDyPpSQXPA2D'
+export const JLSOL_MINT = '2uQsyo1fXXQkDtcpXnLofWy88PxcvnfH2L8FPSE62FVU'
 
 const EnvSchema = z
   .object({
@@ -63,6 +65,8 @@ const EnvSchema = z
     JUPITER_API_KEY: z.string().optional(),
     RELAYER_SECRET_KEY: z.string().optional(),
     CRANK_SECRET_KEY: z.string().optional(),
+    // Localnet only: a maker POOK token account that approved the crank as delegate, standing in for Jupiter.
+    CRANK_LOCAL_MAKER: address.optional(),
   })
   .superRefine(requireWhen('CLUSTER', 'mainnet', ['DATABASE_URL', 'POOK_PROGRAM_ID', 'HELIUS_RPC_URL']))
 
@@ -95,10 +99,10 @@ export function relayerFeeForMint(mint: string, e: Env = env): bigint {
     const hit = parsed[mint]
     if (hit !== undefined) return BigInt(hit)
   }
-  if (isNativeSolMint(mint) || mint === JITOSOL_MINT || mint === MSOL_MINT || mint === KSOL_MINT) {
+  if (isNativeSolMint(mint) || mint === JITOSOL_MINT || mint === MSOL_MINT || mint === KSOL_MINT || mint === JLSOL_MINT) {
     return BigInt(e.RELAYER_FEE_SOL)
   }
-  if (mint === USDC_MINT || mint === KUSDC_MINT) {
+  if (mint === USDC_MINT || mint === KUSDC_MINT || mint === JLUSDC_MINT) {
     return BigInt(e.RELAYER_FEE_USDC)
   }
   return fail(

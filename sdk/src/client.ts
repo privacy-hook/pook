@@ -249,6 +249,8 @@ export type SimulateHookParams = {
   sampleMintIn?: string
   sampleMintOut?: string
   sampleArgs?: Record<string, string>
+  /** A token account holding the input asset; the simulation moves `sampleAmountIn` from it to the stage first. */
+  sampleFundFrom?: string
   signal?: AbortSignal
 }
 
@@ -1757,6 +1759,7 @@ export function createPook(config: PookConfig) {
           sampleMintIn: params.sampleMintIn,
           sampleMintOut: params.sampleMintOut,
           sampleArgs: params.sampleArgs,
+          sampleFundFrom: params.sampleFundFrom,
         },
         { signal: params.signal },
       )

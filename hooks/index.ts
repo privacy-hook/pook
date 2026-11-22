@@ -11,13 +11,13 @@ import {
 } from '@pook/contract'
 import { defineHook, type HookDefinition } from '@pook/sdk'
 import { JITO_HOOK_META } from './jito.js'
-import { JUPITER_HOOK_META, type LaunchHookDisplayMeta } from './jupiter.js'
+import { JUPITER_HOOK_META, JUPITER_LEND_HOOK_META, type LaunchHookDisplayMeta } from './jupiter.js'
 import { KAMINO_HOOK_META } from './kamino.js'
 
 export type { LaunchHookDisplayMeta }
-export { JUPITER_HOOK_META, JITO_HOOK_META, KAMINO_HOOK_META }
+export { JUPITER_HOOK_META, JUPITER_LEND_HOOK_META, JITO_HOOK_META, KAMINO_HOOK_META }
 
-/** Canonical launch hook order. Every on-chain field is read from `program/hooks/<id>.json`. */
+/** Hooks Pook publishes, in order. Every on-chain field is read from `program/hooks/<id>.json`. */
 export const LAUNCH_HOOK_IDS = [
   'jupiter.swap',
   'kamino.supply',
@@ -28,11 +28,14 @@ export const LAUNCH_HOOK_IDS = [
   'kamino.borrow',
   'kamino.repay',
   'kamino.collateral.withdraw',
+  'jupiter.lend.supply',
+  'jupiter.lend.withdraw',
 ] as const
 
 /** Off-chain display metadata only, keyed by hook id. */
 export const LAUNCH_HOOK_DISPLAY_META: Record<string, LaunchHookDisplayMeta> = {
   ...JUPITER_HOOK_META,
+  ...JUPITER_LEND_HOOK_META,
   ...KAMINO_HOOK_META,
   ...JITO_HOOK_META,
 }
@@ -74,6 +77,8 @@ const KNOWN_PROGRAMS = new Set([
   'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
   'Stake11111111111111111111111111111111111111',
   'KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD',
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+  'jupeiUmn818Jg1ekPURTpr4mFo29p46vygyykFJ3wZC',
 ])
 
 function bytesToHex(val: number[] | string): string {
@@ -220,7 +225,7 @@ function hookFromJson(raw: ProgramHookJson, meta: LaunchHookDisplayMeta): HookDe
 }
 
 /**
- * Loads all nine launch hooks from canonical `program/hooks/<id>.json` files
+ * Loads every hook Pook publishes from canonical `program/hooks/<id>.json` files
  * and joins off-chain display metadata from `LAUNCH_HOOK_DISPLAY_META`.
  */
 export function loadLaunchHooks(programHooksDir?: string): readonly HookDefinition[] {

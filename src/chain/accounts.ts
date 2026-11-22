@@ -27,6 +27,8 @@ export const SUPPORTED_ASSETS: AssetInfo[] = [
   { mint: MSOL_MINT, symbol: 'mSOL', name: 'Marinade Staked SOL', decimals: 9 },
   { mint: 'B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D', symbol: 'kUSDC', name: 'Kamino USDC Collateral', decimals: 6 },
   { mint: '2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1', symbol: 'kSOL', name: 'Kamino SOL Collateral', decimals: 9 },
+  { mint: '9BEcn9aPEmhSPbPQeFGjidRiEKki46fVQDyPpSQXPA2D', symbol: 'jlUSDC', name: 'Jupiter Lend USDC', decimals: 6 },
+  { mint: '2uQsyo1fXXQkDtcpXnLofWy88PxcvnfH2L8FPSE62FVU', symbol: 'jlSOL', name: 'Jupiter Lend SOL', decimals: 9 },
 ]
 
 export function assetMeta(mint: string | null | undefined): AssetInfo | null {
