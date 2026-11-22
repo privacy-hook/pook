@@ -1,0 +1,8 @@
+{
+  "delta_g2_contribution": "8bc904771e9f38fdd4ba7aaf206f2920c1ae98a5e5c35a66607aef6845cad700965a7b7485e900e73ca53a775514943390ad94c92eaea2755551f111a1d77705",
+  "proof_commitment": "ed4ffc5fbd0942c7b77ff8ed8dda0ceb23e97f3ad7fee2440a579b538a18f828a01bf7084614bde83bba6434800af7b616dbd5d6e61df38b49ee39eee33f3e19",
+  "proof_response": "e759fbbd99b4f825329f12497203370d7bad63eccccc9f2c70e9ad7a48108721",
+  "prev_delta_g1": "35c2bebb589c7baf1d1e9f259e432ed6aa171f7fb9e3143eefef5f09865dba99",
+  "new_delta_g1": "92c492a1e04ebb14a38e85ffecd4384b2e4c3dd89b019cf141694918d18b9319",
+  "contributor_label": "beacon:drand-default-round-6664902:0769095dbc77d2b8"
+}

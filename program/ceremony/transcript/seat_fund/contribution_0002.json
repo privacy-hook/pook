@@ -1,0 +1,8 @@
+{
+  "delta_g2_contribution": "6fe2b4d64c8a224ce5aaad404c466b420fbe0207d6c7ba722748b1c75fffb7074bd56434a8af820208e8f656a88eb016a3d80155de5002e77dc06f60a778d1ac",
+  "proof_commitment": "8d6d1ca9a07668a5ef0d72c3487461780f702c6d81b6160dbe1b9722ccbe631d01e3b1242633cbb35dca179df6de4adddc75149297daf13718d4ba8abc9c3b16",
+  "proof_response": "14f22175432bcf0d5be3c73697d5f009b8f508f4c97597bd15d7369425e6aa18",
+  "prev_delta_g1": "2843e96ded37d9d1869f5bf4a3b673c1fbe06928ef4ee43b01f2498223716312",
+  "new_delta_g1": "fadc3c9482bc4ff1e91eb9403afaf159c3477bfbcf88908ec65909d8d3ad149e",
+  "contributor_label": "contributor-2"
+}

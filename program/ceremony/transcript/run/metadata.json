@@ -1,0 +1,18 @@
+{
+  "protocol": "groth16",
+  "curve": "bn254",
+  "setup_mode": "phase2-from-ptau+mpc[3 contributors]",
+  "production_safe": true,
+  "circuit_hash": "44b164e2bf2735009f59662ddd841b10d0405754fa4228570a5fae7daf6fd00b",
+  "digest": "cfd955d64c87705f98f212a473f2e9a3",
+  "verifying_key_sha256": "bbd15c4c4eb3328053796024691d1de7548c663aab1cf1b96d87c51ba135541e",
+  "backend_version": "0.3.1",
+  "created_at": "2026-11-22T20:09:17.278355553+00:00",
+  "num_public_inputs": 1,
+  "num_constraints": 9873,
+  "deterministic_rng_seed": null,
+  "ptau_source": "ppot_0080_14.ptau",
+  "phase2_seed_hash": null,
+  "r1cs_form": "minimized",
+  "qap_domain_size": 16384
+}

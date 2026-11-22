@@ -12,6 +12,34 @@ ZOLANA_BIN="${ZOLANA_BIN:-$HOME/pook-tools/zolana}"
 
 cd "$WORKSPACE_DIR"
 
+# --keys <ceremony>/final: rebuild only the web + node WASM against the ceremony's keys.
+# Verifiers, artifacts and the .so stay as 06-export-and-build.sh wrote them.
+if [[ "${1:-}" == "--keys" ]]; then
+  FINAL="${2:?usage: $0 --keys <ceremony>/final}"
+  STAGE="$CARGO_TARGET_DIR/zk/pook-program-prod"
+  rm -rf "$STAGE"; mkdir -p "$STAGE"
+  cp -r "$CARGO_TARGET_DIR/zk/pook-program/." "$STAGE/"
+  for c in run leave seat_open seat_fund seat_action seat_close; do
+    cp -f "$FINAL/$c/"{circuit.xbc,pk.bin,vk.bin,digest,metadata.json} "$STAGE/$c/"
+  done
+  for t in web nodejs; do
+    out="$WORKSPACE_DIR/wasm/$([[ "$t" == nodejs ]] && echo node || echo web)"
+    "$ZOLANA_BIN" zk compile -p pook-program --manifest-path "$WORKSPACE_DIR/program/Cargo.toml" \
+      --r1cs-out "$STAGE" --skip-r1cs --skip-keys --wasm-target "$t" --wasm-out "$out"
+  done
+  python3 - "$WORKSPACE_DIR" "$FINAL/trusted-keys.sha256" <<'PY'
+import json, pathlib, sys
+ws = pathlib.Path(sys.argv[1])
+trusted = dict(reversed(l.split()) for l in pathlib.Path(sys.argv[2]).read_text().splitlines() if l.strip())
+for d in ("web", "node"):
+    for name, e in json.loads((ws / "wasm" / d / "proving-keys.json").read_text()).items():
+        if bytes(e["provingKeySha256"]).hex() != trusted[f"{name}/pk.bin"] or e.get("insecureTestSetup"):
+            raise SystemExit(f"{d}/{name}: proving key does not match {sys.argv[2]}")
+print("WASM (web + node) built against the trusted keys")
+PY
+  exit 0
+fi
+
 echo "=== 1. Compiling Xark circuits, test keys, verifiers, and web WASM ==="
 "$ZOLANA_BIN" zk compile \
   -p pook-program \

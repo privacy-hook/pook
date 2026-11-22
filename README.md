@@ -2,6 +2,8 @@
 
 Use any protocol without being seen.
 
+A person should keep their privacy without leaving the protocols they already use. A new privacy protocol is built apart from Solana's existing infrastructure, so it starts far from the liquidity and the users that sit in Jupiter, Kamino, Jito and the rest. Pook leaves both where they are and adds privacy on the person's side of the call, with nothing changed in the protocol.
+
 Pook is a Solana program that spends a private balance on Solana Privacy Rings into an existing protocol and returns the result to a private balance in the same transaction. The protocol never sees a wallet: Pook's own PDA withdraws the input, calls the target program and deposits what came back to a new note that only the holder can spend.
 
 Each protocol instruction Pook can call is described by a hook, a public on-chain record of the target program, the instruction, which accounts carry the input and output, and who wrote it. Anyone can publish a hook. Its author earns a share of the run fee on every run through it.
@@ -24,13 +26,13 @@ A relayer signs and pays for every proven transaction, so the holder's key never
 |---|---|
 | `program/program/` | The `pook` program: `init_config`, `set_config`, `publish_hook`, `enter`, `run`, `leave`, `open_seat`, `close_seat`, `claim_author_fees` |
 | `program/program/src/circuits/` | The six Xark circuits: `run`, `leave`, `seat_open`, `seat_fund`, `seat_action`, `seat_close` |
-| `program/program/src/verifier/` | On-chain Groth16 verifiers generated from the circuits |
-| `program/artifacts/` | Circuit bytecode, proving and verifying keys from the test setup, served by the prover |
+| `program/program/src/verifier/` | On-chain Groth16 verifiers for the ceremony's keys |
+| `program/artifacts/` | Circuit bytecode, proving and verifying keys from the ceremony, served by the prover |
 | `program/sdk/` | Rust SDK: instruction builders, proving, notes, and the nine launch hooks |
 | `program/hooks/` | The launch hooks as `publish_hook` arguments: `jupiter.swap`, `kamino.supply`, `kamino.withdraw`, `jito.stake`, `jito.unstake`, `kamino.collateral.deposit`, `kamino.borrow`, `kamino.repay`, `kamino.collateral.withdraw` |
 | `program/test/` | The end-to-end suite and the localnet bootstrap and `pook_init` binaries |
 | `program/scripts/` | `build-circuits.sh`, `deploy.sh`, `init.sh` |
-| `program/ceremony/` | The phase-2 trusted setup for the six circuits, which produces the mainnet keys and verifiers |
+| `program/ceremony/` | The phase-2 trusted setup for the six circuits and its public transcript |
 | `contract/` | `@pook/contract`: the API's zod schemas, error model, HTTP client, OpenAPI document and fixtures |
 | `sdk/` | `@pook/sdk`: the browser-safe developer surface (`createPook`, `run`, `enter`, `leave`, `balance`, `seats`, `defineHook`, `publishHook`, `simulateHook`). Notes are found and decrypted on the client |
 | `hooks/` | Display metadata for the launch hooks, written with `defineHook` |
@@ -69,20 +71,28 @@ cd program
 cargo test -p pook-sdk --release    # launch hook definitions against program/hooks/*.json
 ```
 
-Circuits, verifiers and the circuit WASM are built with the `zolana` CLI (set `ZOLANA_BIN`), on Linux or WSL:
-
-```bash
-bash program/scripts/build-circuits.sh
-```
-
-The SBF binary for a localnet, with the test-setup verifiers:
+The SBF binary:
 
 ```bash
 cargo-build-sbf --arch v0 --manifest-path program/program/Cargo.toml \
-  --sbf-out-dir program/deploy -- --no-default-features --features bpf-entrypoint,insecure-test-setup
+  --sbf-out-dir program/deploy -- --no-default-features --features bpf-entrypoint
 ```
 
-A mainnet binary is built from the ceremony's verifiers: `program/ceremony/README.md`.
+The circuit WASM is built with the `zolana` CLI (set `ZOLANA_BIN`), on Linux or WSL. `--keys` builds it against the ceremony's keys; without it, `build-circuits.sh` compiles the circuits with fresh test keys and writes test verifiers, for work on the circuits themselves.
+
+```bash
+bash program/scripts/build-circuits.sh --keys <ceremony>/final
+```
+
+## Verify the deployed program
+
+The verifiers in `program/program/src/verifier/` and the keys in `program/artifacts/` come from a phase-2 ceremony for the six circuits: two contributions per circuit, then a drand beacon, finalized 2026-11-22. Its transcript is in `program/ceremony/transcript/`, and `program/ceremony/04-verify.sh` rechecks the chain of contributions against it. To check a built binary's verifiers against the published key hashes:
+
+```bash
+zolana vks check --so program/deploy/pook_program.so --expect program/ceremony/transcript/trusted-keys.sha256
+```
+
+`program/deploy/mainnet-beta.json` records the deployed binary's size and SHA-256, the Config values and every account `init.sh` created on mainnet.
 
 ## Test on a localnet
 
@@ -106,7 +116,7 @@ With Postgres and the `prover`, `relayer`, `indexer` and `api` services running 
 
 ## Deploy
 
-`program/scripts/deploy.sh` deploys, resumes or upgrades the program and refuses a binary built with test keys unless told otherwise. `program/scripts/init.sh` runs `init_config`, creates the fee accounts, registers the payout mints on Rings and publishes the launch hooks, then records what it created in `program/deploy/<cluster>.json`. `program/deploy/FIGURES.md` has the rent each step costs.
+`program/scripts/deploy.sh` deploys, resumes or upgrades the program and refuses a binary built with test keys unless told otherwise, and checks the binary's verifiers against `trusted-keys.sha256` when given one. `program/scripts/init.sh` runs `init_config`, creates the fee accounts, registers the payout mints on Rings and publishes the launch hooks, then records what it created in `program/deploy/<cluster>.json`. `program/deploy/FIGURES.md` has the rent each step costs.
 
 ## License
 

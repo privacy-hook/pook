@@ -27,7 +27,7 @@ Six single-purpose circuits keep constraint counts small and avoid dummy-branch 
 5. `seat_action` (6,740 constraints) — Seat hooks with no input token spend (`kamino.borrow`, `kamino.collateral.withdraw`): spends & renews `DataUtxo<SeatNote>` and binds hook, `call_hash`, `min_out`, `output_owner_hash`, `relayer_fee`, `expiry`.
 6. `seat_close` (4,578 constraints) — Burns `DataUtxo<SeatNote>` so `close_seat` closes `Seat` state and returns rent to `opener_relayer`.
 
-Compiled circuit artifacts (`circuit.xbc`, `pk.bin`, `vk.bin`) are copied by `scripts/build-circuits.sh` into `program/artifacts/<circuit>/` and verified against `program/wasm/web/proving-keys.json`.
+The keys in `program/artifacts/<circuit>/` (`circuit.xbc`, `pk.bin`, `vk.bin`) and the verifiers in `program/src/verifier/` come from the phase-2 ceremony (`ceremony/`); its public transcript and `trusted-keys.sha256` are in `ceremony/transcript/`. `scripts/build-circuits.sh --keys <ceremony>/final` rebuilds the WASM against those keys and checks `wasm/{web,node}/proving-keys.json` against the trusted hashes.
 
 ## Stage Isolation and Native SOL / WSOL Handling
 

@@ -1,0 +1,8 @@
+{
+  "beacon": "0769095dbc77d2b89e6f2f2d1c299f233a8b23043a49aeddf9ecd7fa1ef549a5",
+  "source": "drand-default-round-6664902",
+  "label": "beacon:drand-default-round-6664902:0769095dbc77d2b8",
+  "finalized_at_utc": "2026-11-22T20:11:45Z",
+  "ptau": "ppot_0080_14.ptau",
+  "ptau_sha256": "3ca1149e9349b22b0ee0649399cfb787677129b7b1189d1899fc0d615d9583db"
+}
