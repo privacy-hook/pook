@@ -60,7 +60,8 @@ Nine launch hooks are defined in `program/sdk/src/hooks.rs` and exported as cano
 - `Config` stores `run_fee_bps` and `author_share_bps` (both supplied to `init_config`; no production defaults hardcoded).
 - `run_fee = floor(delta_out * run_fee_bps / 10_000)`.
 - `protocol_fee = floor(run_fee * (10_000 - author_share_bps) / 10_000)` (protocol share rounded down); `author_fee = run_fee - protocol_fee`.
-- Protocol share is paid directly in `run` to `fee_recipient` (SOL) or `fee_recipient`'s derived ATA (SPL).
+- Protocol share is paid directly in `run` to `fee_recipient` (SOL, as lamports by a System transfer from the stage) or `fee_recipient`'s derived ATA (SPL, a token transfer signed by the stage or seat PDA).
+- Buyback reads only those payments. The indexer takes each run's transfers to `fee_recipient` that a stage or seat PDA signed beneath the `run` instruction and adds them to `buyback_fee` per asset. The crank swaps at most `accrued - spent` per asset (and at most what the account holds) to POOK, and burns exactly the POOK that swap delivered, read from the swap transaction itself. The fee recipient's own balances (SOL, tokens, a standing POOK allocation) are never an input.
 - Author share accrues to `AuthorFees` PDA `[b"author_fees", author, mint]` (auto-created on first accrual; SOL sits above rent exemption in the PDA, SPL sits in the PDA's derived ATA) and is claimed via `claim_author_fees`.
 
 ## Call Hash Binding

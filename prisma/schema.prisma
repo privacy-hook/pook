@@ -263,3 +263,33 @@ model HookDraftMetadata {
 
   @@map("hook_draft_metadata")
 }
+
+// Protocol share owed to buyback, per fee asset, counted from the runs themselves (the program's own
+// transfer to Config's fee recipient). accrued - spent is what the crank may swap; nothing else in
+// the fee recipient's wallet is ever an input.
+model BuybackFee {
+  mint      String   @id @db.VarChar(44)
+  accrued   String   @default("0")
+  spent     String   @default("0")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("buyback_fee")
+}
+
+// One buyback: written before its swap is sent, so a restart reconciles it instead of swapping again.
+// status: planned -> swapped (spent and delivered read from the swap transaction) -> burned; or void
+// when the swap provably never landed.
+model BuybackSwap {
+  key           String   @id
+  mint          String   @db.VarChar(44)
+  amountIn      String   @map("amount_in")
+  status        String   @db.VarChar(16)
+  swapSignature String?  @map("swap_signature") @db.VarChar(88)
+  pookDelivered String?  @map("pook_delivered")
+  burnSignature String?  @map("burn_signature") @db.VarChar(88)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status])
+  @@map("buyback_swap")
+}

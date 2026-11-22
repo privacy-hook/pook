@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Pook end-to-end flow runner covering PLAN.md Flows 1 to 8 and all nine launch hooks.
+ * Pook end-to-end flow runner covering PLAN.md Flows 1 to 8, all nine launch hooks, and Flow 9:
+ * Jupiter Lend supply and withdraw (needs `jupiter.lend.*` published, as `init.sh` does).
  *
  * Drives `@pook/sdk` in Node (loading `program/wasm/node/pook_program.js` in chain mode)
  * against local API, prover, relayer, and Solana RPC. After each step, asserts the resulting state
@@ -17,7 +18,7 @@
  *   PHOTON_URL          (default http://127.0.0.1:20813)
  *   HOLDER_KEYPAIR_PATH (default localnet/keys/holder.json)
  *   AUTHOR_KEYPAIR_PATH (default localnet/keys/admin.json)
- *   FLOWS               (optional comma-separated list, default "1,2,3,4,5,6,7,8")
+ *   FLOWS               (optional comma-separated list, default "1,2,3,4,5,6,7,8,9")
  */
 
 import assert from 'node:assert/strict'
@@ -54,9 +55,11 @@ const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 const WSOL_MINT = 'So11111111111111111111111111111111111111112'
 const JITOSOL_MINT = 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn'
 const KUSDC_MINT = 'B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D'
+const JLUSDC_MINT = '9BEcn9aPEmhSPbPQeFGjidRiEKki46fVQDyPpSQXPA2D'
+const JLSOL_MINT = '2uQsyo1fXXQkDtcpXnLofWy88PxcvnfH2L8FPSE62FVU'
 
 const selectedFlows = new Set(
-  (process.env.FLOWS ?? '1,2,3,4,5,6,7,8')
+  (process.env.FLOWS ?? '1,2,3,4,5,6,7,8,9')
     .split(',')
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isInteger(n)),
@@ -722,6 +725,35 @@ async function main() {
   }
 
   // Flow 8: Crank waiting while POOK_MINT unset + public feed & stats count runs
+  // Flow 9: Jupiter Lend supply then withdraw, for USDC and SOL
+  if (selectedFlows.has(9)) {
+    await runStep('flow9_jupiter_lend_supply_and_withdraw', async () => {
+      for (const [asset, earn, amount] of [
+        [USDC_MINT, JLUSDC_MINT, '5000000'],
+        [WSOL_MINT, JLSOL_MINT, '100000000'],
+      ]) {
+        console.log(`\n[Flow 9] jupiter.lend.supply (${asset.slice(0, 4)} -> ${earn.slice(0, 4)}) then jupiter.lend.withdraw`)
+        const earnBefore = balanceOf(await pook.balance(), earn)
+        const sup = await pook.run('jupiter.lend.supply', { in: asset, out: earn, amount, slippageBps: 100 })
+        assertRelayConfirmed(sup.relay, 'jupiter.lend.supply')
+        if (isChain) await assertNoHolderWalletInTx(sup.signature, holderPubkey, 'jupiter.lend.supply')
+        expectedNewRuns += 1
+
+        const bal = await pook.balance()
+        if (isChain) {
+          assert.equal(String(balanceOf(bal, earn) - earnBefore), sup.relay.netOut, 'relay netOut is what landed in the private balance')
+        }
+        const shares = largestSpendableNoteOf(bal, earn)
+        assert.ok(shares > 0n, `Expected an earn-token note after jupiter.lend.supply, got ${shares}`)
+        const wd = await pook.run('jupiter.lend.withdraw', { in: earn, out: asset, amount: shares, slippageBps: 100 })
+        assertRelayConfirmed(wd.relay, 'jupiter.lend.withdraw')
+        if (isChain) await assertNoHolderWalletInTx(wd.signature, holderPubkey, 'jupiter.lend.withdraw')
+        expectedNewRuns += 1
+        console.log(`  [ok] supply ${amount} -> ${shares} shares (${sup.signature?.slice(0, 12)}...), withdraw (${wd.signature?.slice(0, 12)}...) confirmed`)
+      }
+    })
+  }
+
   if (selectedFlows.has(8)) {
     await runStep('flow8_crank_waiting_and_feed_stats', async () => {
       console.log('\n[Flow 8] Crank waiting check + public stats and runs feed')

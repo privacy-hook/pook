@@ -73,6 +73,8 @@ type PookFact =
       relayer: string
       feeRecipient: string
       authorFeesPda: string
+      /** What the program paid out of the stage (or seat) beneath this run, by recipient wallet. */
+      stagePayouts: StagePayout[]
     }
   | {
       kind: 'open_seat'
@@ -92,6 +94,41 @@ type PookFact =
     }
 
 type TxFacts = { items: PookFact[] }
+
+type StagePayout = { mint: string; amount: string; recipient: string }
+
+const SYSTEM_PROGRAM = '11111111111111111111111111111111'
+
+/**
+ * Transfers beneath one run instruction whose authority is a program-derived address (the stage or a
+ * seat), so only Pook could have signed them: SPL transfers keyed by the destination's owner wallet,
+ * and System transfers of lamports keyed by the destination (native SOL, as WSOL_MINT). A transfer
+ * signed by any key of the transaction (the relayer, or anyone adding their own instruction) is not one.
+ */
+function stagePayouts(tx: DecodedTransaction, ix: DecodedInstruction): StagePayout[] {
+  const signers = new Set(tx.signers)
+  const ownerOf = new Map(tx.tokenBalances.filter((b) => b.owner).map((b) => [b.account, b.owner!]))
+  const out: StagePayout[] = []
+  for (const f of descendants(tx, ix)) {
+    if (f.kind !== 'transfer' || !f.mint || !f.destination || signers.has(f.authority)) continue
+    const recipient = ownerOf.get(f.destination)
+    if (recipient) out.push({ mint: f.mint, amount: f.amountRaw, recipient })
+  }
+  const parentOf = new Map(tx.instructions.map((i) => [i.path.index, i.parentIndex]))
+  const beneath = (i: { parentIndex: number | null }) => {
+    for (let p = i.parentIndex; p !== null; p = parentOf.get(p) ?? null) if (p === ix.path.index) return true
+    return false
+  }
+  for (const inner of tx.instructions) {
+    if (inner.programId !== SYSTEM_PROGRAM || !beneath(inner) || inner.data.length < 12) continue
+    const view = new DataView(inner.data.buffer, inner.data.byteOffset, inner.data.byteLength)
+    if (view.getUint32(0, true) !== 2) continue // SystemInstruction::Transfer
+    const [from, to] = inner.accounts
+    if (!from || !to || signers.has(from)) continue
+    out.push({ mint: WSOL_MINT, amount: view.getBigUint64(4, true).toString(), recipient: to })
+  }
+  return out
+}
 
 function extractFacts(tx: DecodedTransaction, programId: string): TxFacts {
   const items: PookFact[] = []
@@ -148,6 +185,7 @@ function extractFacts(tx: DecodedTransaction, programId: string): TxFacts {
         relayer: acc.relayerPayer ?? '',
         feeRecipient: acc.feeRecipient ?? '',
         authorFeesPda: acc.authorFeesPda ?? '',
+        stagePayouts: stagePayouts(tx, ix),
       })
     } else if (ix.name === 'open_seat') {
       items.push({
@@ -319,6 +357,24 @@ async function applyFacts(
       const existing = await tx.hookRun.findUnique({ where: { signature: row.signature } })
       if (existing) continue
 
+      // The protocol share exactly as the program paid it to Config's fee recipient in this run. It is
+      // what the crank may spend: nothing else that reaches that wallet ever counts as a fee.
+      const feeMint = fact.mintOut ? (isNativeSolMint(fact.mintOut) ? WSOL_MINT : fact.mintOut) : null
+      const protocolFee =
+        feeMint && cfg?.feeRecipient
+          ? (fact.stagePayouts ?? [])
+              .filter((p) => p.recipient === cfg.feeRecipient && p.mint === feeMint)
+              .reduce((sum, p) => sum + BigInt(p.amount), 0n)
+          : 0n
+      if (feeMint && protocolFee > 0n) {
+        const prev = await tx.buybackFee.findUnique({ where: { mint: feeMint } })
+        await tx.buybackFee.upsert({
+          where: { mint: feeMint },
+          create: { mint: feeMint, accrued: protocolFee.toString(), spent: '0' },
+          update: { accrued: (BigInt(prev?.accrued ?? '0') + protocolFee).toString() },
+        })
+      }
+
       await tx.hookRun.create({
         data: {
           signature: row.signature,
@@ -335,7 +391,7 @@ async function applyFacts(
           amountOut: fact.amountOut,
           runFeeAmount: split.runFee.toString(),
           authorFeeAmount: split.authorFee.toString(),
-          protocolFeeAmount: split.protocolFee.toString(),
+          protocolFeeAmount: protocolFee.toString(),
           relayerFeeAmount: fact.relayerFee,
           stageAuthority: fact.stageAuthority,
           relayer: fact.relayer,

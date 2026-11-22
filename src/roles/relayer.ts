@@ -13,6 +13,7 @@ import {
   RelayRunRequest,
   RelaySeatRequest,
   RelayerQuoteQuery,
+  SOL_INTERFACE_ADDRESS,
   SYSTEM_PROGRAM_ID,
   SYSVAR_RENT_ID,
   WSOL_MINT,
@@ -21,6 +22,7 @@ import {
   decodeRunIxData,
   decodeSeatLifecycleIxData,
   fromBase64,
+  isNativeSolMint,
   toHex,
   type RelaySubmissionResponse,
   type WireHookAccount,
@@ -35,6 +37,7 @@ import {
   findConfigPda,
   findSeatPda,
   findSeatStatePda,
+  findSppSplInterfacePda,
   findStagePda,
   pookErrorRegistry,
 } from '../chain/pda.js'
@@ -57,6 +60,7 @@ type RelayEntry = {
   response: RelaySubmissionResponse
   wireBase64?: string
   lastValidBlockHeight?: bigint
+  mintOut?: string | null
 }
 
 const COMPUTE_BUDGET_ID = ComputeBudgetProgram.programId.toBase58()
@@ -471,6 +475,39 @@ const database = env.DATABASE_URL ? createDatabase(env.DATABASE_URL, (adapter) =
 const registry = env.POOK_PROGRAM_ID ? pookErrorRegistry(env.POOK_PROGRAM_ID) : new Map()
 const jobs = new Map<string, RelayEntry>()
 
+/**
+ * What a confirmed run put into the holder's new note: the Privacy Program's balance change for the out
+ * asset in that transaction (its SPL interface vault, or the SOL interface's lamports). null when the
+ * transaction can't be read.
+ */
+async function measureNetOut(signature: string, mintOut: string): Promise<string | null> {
+  try {
+    const res = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTransaction', params: [signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 1 }] }),
+    })
+    const tx = (await res.json()).result
+    if (!tx?.meta) return null
+    const keys: string[] = [...(tx.transaction?.message?.accountKeys ?? []), ...(tx.meta.loadedAddresses?.writable ?? []), ...(tx.meta.loadedAddresses?.readonly ?? [])]
+    if (isNativeSolMint(mintOut)) {
+      const i = keys.indexOf(SOL_INTERFACE_ADDRESS)
+      if (i < 0) return null
+      const delta = BigInt(tx.meta.postBalances[i]) - BigInt(tx.meta.preBalances[i])
+      return delta > 0n ? delta.toString() : null
+    }
+    const [vault] = findSppSplInterfacePda(new PublicKey(env.RINGS_PROGRAM_ID), new PublicKey(mintOut))
+    const i = keys.indexOf(vault.toBase58())
+    const amount = (list: { accountIndex: number; uiTokenAmount: { amount: string } }[] | undefined) =>
+      BigInt(list?.find((b) => b.accountIndex === i)?.uiTokenAmount.amount ?? '0')
+    if (i < 0) return null
+    const delta = amount(tx.meta.postTokenBalances) - amount(tx.meta.preTokenBalances)
+    return delta > 0n ? delta.toString() : null
+  } catch {
+    return null
+  }
+}
+
 const hookCache = new Map<string, WireHookAccount>()
 const configCache = env.POOK_PROGRAM_ID ? new ConfigCache(rpc.connection, new PublicKey(env.POOK_PROGRAM_ID), 60_000) : null
 
@@ -617,7 +654,7 @@ async function submitRelayedV1(options: {
     expiresAt,
     updatedAt: now,
   }
-  jobs.set(options.relayId, { response: initial, wireBase64: compiled.wireBase64, lastValidBlockHeight: compiled.lastValidBlockHeight })
+  jobs.set(options.relayId, { response: initial, wireBase64: compiled.wireBase64, lastValidBlockHeight: compiled.lastValidBlockHeight, mintOut: options.meta.mintOut ?? null })
   await persistRelayJob(initial, { ...options.meta, expiryUnixTs: options.expiryUnixTs })
 
   const deadline = Date.now() + 20_000
@@ -667,6 +704,8 @@ async function submitRelayedV1(options: {
     await new Promise((r) => setTimeout(r, 750))
   }
 
+  const netOut =
+    finalStatus === 'confirmed' && options.kind === 'run' && options.meta.mintOut ? await measureNetOut(compiled.signature, options.meta.mintOut) : null
   const response: RelaySubmissionResponse = {
     relayId: options.relayId,
     kind: options.kind,
@@ -677,11 +716,12 @@ async function submitRelayedV1(options: {
     seatAddress: options.seatAddress ?? null,
     relayerFee: options.relayerFee,
     run: null,
+    ...(netOut ? { netOut } : {}),
     ...(errorDetail ? { error: errorDetail } : {}),
     expiresAt,
     updatedAt: new Date().toISOString(),
   }
-  jobs.set(options.relayId, { response, wireBase64: compiled.wireBase64, lastValidBlockHeight: compiled.lastValidBlockHeight })
+  jobs.set(options.relayId, { response, wireBase64: compiled.wireBase64, lastValidBlockHeight: compiled.lastValidBlockHeight, mintOut: options.meta.mintOut ?? null })
   await persistRelayJob(response, { ...options.meta, expiryUnixTs: options.expiryUnixTs })
   return response
 }
@@ -1266,7 +1306,8 @@ app.get('/v1/relayer/runs/:relayId', async (c) => {
         registry,
       })
       if (step.status === 'confirmed') {
-        entry.response = { ...entry.response, status: 'confirmed', slot: step.slot.toString(), updatedAt: new Date().toISOString() }
+        const netOut = entry.response.kind === 'run' && entry.mintOut ? await measureNetOut(entry.response.signature, entry.mintOut) : null
+        entry.response = { ...entry.response, status: 'confirmed', slot: step.slot.toString(), ...(netOut ? { netOut } : {}), updatedAt: new Date().toISOString() }
       } else if (step.status === 'failed') {
         entry.response = {
           ...entry.response,
